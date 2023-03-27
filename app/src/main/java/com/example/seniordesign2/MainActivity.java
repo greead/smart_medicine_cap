@@ -140,7 +140,8 @@ public class  MainActivity extends AppCompatActivity {
         // Set up observer to connect when the attempt connect flag is true
         Observer<Boolean> connectFlagObserver = connectFlag -> {
             if(connectFlag == true && bluetoothService != null) {
-                bluetoothService.connect();
+                final boolean result = bluetoothService.connect();
+                Log.e("APPDEBUG", "Connection Request Result = " + result);
                 bluetoothViewModel.getAttemptConnectFlag().setValue(false);
             }
         };
@@ -186,6 +187,7 @@ public class  MainActivity extends AppCompatActivity {
     protected void onResume() {
         super.onResume();
 
+        // Register the bluetooth receiver
         registerReceiver(gattUpdateReceiver, makeGattUpdateIntentFilter());
         if (bluetoothService != null) {
             final boolean result = bluetoothService.connect();
@@ -197,6 +199,7 @@ public class  MainActivity extends AppCompatActivity {
     protected void onPause() {
         super.onPause();
 
+        // Unregister the bluetooth receiver
         unregisterReceiver(gattUpdateReceiver);
     }
 
