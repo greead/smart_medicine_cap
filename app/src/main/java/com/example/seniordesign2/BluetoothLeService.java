@@ -32,7 +32,9 @@ public class BluetoothLeService extends Service {
     private final BluetoothGattCallback bluetoothGattCallback = new BluetoothGattCallback() {
         @Override
         public void onConnectionStateChange(BluetoothGatt gatt, int status, int newState) {
+            Log.e("APPDEBUG", "Connection State: " + newState );
             if(newState == BluetoothProfile.STATE_CONNECTED){
+                Log.e("APPDEBUG", "Connected");
                 broadcastUpdate(ACTION_GATT_CONNECTED);
                 connectionState = BluetoothProfile.STATE_CONNECTED;
                 try {
@@ -42,6 +44,7 @@ public class BluetoothLeService extends Service {
                 }
 
             } else if (newState == BluetoothProfile.STATE_DISCONNECTED) {
+                Log.e("APPDEBUG", "Disconnected");
                 broadcastUpdate(ACTION_GATT_DISCONNECTED);
                 connectionState = BluetoothProfile.STATE_DISCONNECTED;
             }
@@ -89,7 +92,9 @@ public class BluetoothLeService extends Service {
         try {
             final BluetoothDevice device = bluetoothViewModel.getBluetoothDevice().getValue();
             // Connect to GATT server
+            Log.e("APPDEBUG", "Device attempting to connect");
             bluetoothGatt = device.connectGatt(this, true, bluetoothGattCallback);
+
             return true;
         } catch (IllegalArgumentException e) {
             Log.e("APPDEBUG", "Device not found");

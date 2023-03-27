@@ -105,12 +105,13 @@ public class  MainActivity extends AppCompatActivity {
 
         Intent gattServiceIntent = new Intent(this, BluetoothLeService.class);
         bindService(gattServiceIntent, serviceConnection, Context.BIND_AUTO_CREATE);
-//        Observer<BluetoothDevice> bluetoothDeviceObserver = bluetoothDevice -> {
-//            if(bluetoothDevice != null) {
-//                bluetoothService.connect(bluetoothDevice);
-//            }
-//        };
-//        bluetoothViewModel.getBluetoothDevice().observe(this, bluetoothDeviceObserver);
+        Observer<Boolean> connectFlagObserver = connectFlag -> {
+            if(connectFlag == true && bluetoothService != null) {
+                bluetoothService.connect();
+                bluetoothViewModel.getAttemptConnectFlag().setValue(false);
+            }
+        };
+        bluetoothViewModel.getAttemptConnectFlag().observe(this, connectFlagObserver);
 
         bluetoothManager = getSystemService(BluetoothManager.class);
         bluetoothViewModel.getBluetoothManager().setValue(bluetoothManager);
