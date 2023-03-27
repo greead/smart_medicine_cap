@@ -11,6 +11,7 @@ import androidx.room.Query;
 import androidx.room.RoomDatabase;
 
 import java.util.ArrayList;
+import java.util.List;
 
 @Database(entities = {DeviceLog.Entry.class}, version = 1)
 public abstract class DeviceLog extends RoomDatabase {
@@ -18,7 +19,7 @@ public abstract class DeviceLog extends RoomDatabase {
     public abstract LogDao logDao();
 
     @Entity
-    public class Entry {
+    public static class Entry {
         @PrimaryKey(autoGenerate = true)
         public int id;
 
@@ -35,10 +36,10 @@ public abstract class DeviceLog extends RoomDatabase {
     @Dao
     public interface LogDao {
         @Query("SELECT * FROM entry")
-        ArrayList<Entry> getAll();
+        List<Entry> getAll();
 
         @Query("SELECT * FROM entry WHERE device_address LIKE :address")
-        ArrayList<Entry> loadByAddress(String address);
+        List<Entry> loadByAddress(String address);
 
         @Insert
         void insertAll(Entry... entries);
