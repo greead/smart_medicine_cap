@@ -80,6 +80,7 @@ public class DeviceDialogFragment extends Fragment {
         Log.e("APPDEBUG", "onCreateView");
         View view = inflater.inflate(R.layout.fragment_device_dialog, container, false);
         selectedDevice = bluetoothViewModel.getPairedDevices().getValue().get(position);
+        bluetoothViewModel.getBluetoothDevice().setValue(selectedDevice);
 
         txtDeviceNameTitle = view.findViewById(R.id.txtDeviceNameTitle);
         try {
@@ -90,16 +91,7 @@ public class DeviceDialogFragment extends Fragment {
 
         btnConnectDevice = view.findViewById(R.id.btnConnectDevice);
         btnConnectDevice.setOnClickListener(buttonView -> {
-            try {
-                selectedDevice.connectGatt(requireContext(), true, new BluetoothGattCallback() {
-                    @Override
-                    public void onConnectionStateChange(BluetoothGatt gatt, int status, int newState) {
-                        Log.e("APPDEBUG", "Connection Status: " + newState);
-                    }
-                });
-            } catch (SecurityException e) {
-                Toast.makeText(requireContext(), "Could not connect", Toast.LENGTH_LONG).show();
-            }
+            bluetoothViewModel.getAttemptConnectFlag().setValue(true);
         });
 
         return view;
