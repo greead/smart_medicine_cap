@@ -88,7 +88,7 @@ public class  MainActivity extends AppCompatActivity {
 
         db = Room.databaseBuilder(this, DeviceLog.class, "medicine_log").build();
         logDao = db.logDao();
-        entries = logDao.getAll();
+        //entries = new ArrayList<>(logDao.getAll());
 
         deviceListViewModel = new ViewModelProvider(this).get(DeviceListViewModel.class);
 
