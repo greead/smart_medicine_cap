@@ -43,9 +43,12 @@ public class  MainActivity extends AppCompatActivity {
     private BluetoothAdapter bluetoothAdapter;
     private BluetoothViewModel bluetoothViewModel;
     private DeviceListViewModel deviceListViewModel;
+    private DeviceLogViewModel deviceLogViewModel;
     private BluetoothLeService bluetoothService;
+    private boolean connected = false;
     private DeviceLog db;
     private DeviceLog.LogDao logDao;
+
     private ArrayList<DeviceLog.Entry> entries;
     private ServiceConnection serviceConnection = new ServiceConnection() {
         @Override
@@ -70,13 +73,23 @@ public class  MainActivity extends AppCompatActivity {
     private final BroadcastReceiver gattUpdateReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
-            if(BluetoothLeService.ACTION_GATT_CONNECTED.equals(intent.getAction())) {
-                bluetoothViewModel.getConnectionStatus().setValue(BluetoothProfile.STATE_CONNECTED);
-            } else if (BluetoothLeService.ACTION_GATT_DISCONNECTED.equals(intent.getAction())) {
-                bluetoothViewModel.getConnectionStatus().setValue(BluetoothProfile.STATE_DISCONNECTED);
-            } else if (BluetoothLeService.ACTION_GATT_SERVICES_DISCOVERED.equals(intent.getAction())) {
-                displayGattServices(bluetoothService.getSupportedGattServices());
-
+            final String action = intent.getAction();
+            if(BluetoothLeService.ACTION_GATT_CONNECTED.equals(action)) {
+                connected = true;
+                bluetoothViewModel.getConnectionStatus()
+                        .setValue(BluetoothProfile.STATE_CONNECTED);
+            } else if (BluetoothLeService.ACTION_GATT_DISCONNECTED.equals(action)) {
+                connected = false;
+                bluetoothViewModel.getConnectionStatus()
+                        .setValue(BluetoothProfile.STATE_DISCONNECTED);
+            } else if (BluetoothLeService.ACTION_GATT_SERVICES_DISCOVERED.equals(action)) {
+//                displayGattServices(bluetoothService.getSupportedGattServices());
+                bluetoothViewModel.getGattServices()
+                        .setValue(bluetoothService.getSupportedGattServices());
+            } else if (BluetoothLeService.ACTION_CHAR_DATA_READ.equals(action)) {
+//                displayData(intent.getStringExtra(BluetoothLeService.EXTRA_DATA));
+                bluetoothViewModel.getExtraData()
+                        .setValue(intent.getStringExtra(BluetoothLeService.EXTRA_DATA));
             }
         }
     };
@@ -86,12 +99,27 @@ public class  MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        db = Room.databaseBuilder(this, DeviceLog.class, "medicine_log").build();
-        logDao = db.logDao();
-        //entries = new ArrayList<>(logDao.getAll());
+        // Set up device log vm
+        deviceLogViewModel = new ViewModelProvider(this).get(DeviceLogViewModel.class);
 
+        // Set up database
+        db = Room.databaseBuilder(this, DeviceLog.class, "medicine_log").build();
+        deviceLogViewModel.getDeviceLog().setValue(db);
+        logDao = db.logDao();
+        deviceLogViewModel.getLogDao().setValue(logDao);
+        Observer<ArrayList<DeviceLog.Entry>> selectedEntriesObserver = new Observer<ArrayList<DeviceLog.Entry>>() {
+            @Override
+            public void onChanged(ArrayList<DeviceLog.Entry> list) {
+                entries = list;
+            }
+        };
+        deviceLogViewModel.getSelectedEntries().observe(this, selectedEntriesObserver);
+        deviceLogViewModel.getAllDevices();
+
+        // Set up device list vm
         deviceListViewModel = new ViewModelProvider(this).get(DeviceListViewModel.class);
 
+        // Register receiver for paired device state change
         registerReceiver(new BroadcastReceiver() {
             @Override
             public void onReceive(Context context, Intent intent) {
@@ -99,12 +127,17 @@ public class  MainActivity extends AppCompatActivity {
             }
         }, new IntentFilter(BluetoothDevice.ACTION_BOND_STATE_CHANGED));
 
-        // Bluetooth setup
+        // Bluetooth vm setup
         bluetoothViewModel = new ViewModelProvider(this).get(BluetoothViewModel.class);
+
+        // Request BT permissions
         requestBtPerms();
 
+        // Create gatt service
         Intent gattServiceIntent = new Intent(this, BluetoothLeService.class);
         bindService(gattServiceIntent, serviceConnection, Context.BIND_AUTO_CREATE);
+
+        // Set up observer to connect when the attempt connect flag is true
         Observer<Boolean> connectFlagObserver = connectFlag -> {
             if(connectFlag == true && bluetoothService != null) {
                 bluetoothService.connect();
@@ -113,24 +146,32 @@ public class  MainActivity extends AppCompatActivity {
         };
         bluetoothViewModel.getAttemptConnectFlag().observe(this, connectFlagObserver);
 
+        // Get the bluetooth manager and update the vm
         bluetoothManager = getSystemService(BluetoothManager.class);
         bluetoothViewModel.getBluetoothManager().setValue(bluetoothManager);
 
+        // Get the bluetooth adapter and update the vm
         bluetoothAdapter = bluetoothManager.getAdapter();
         bluetoothViewModel.getBluetoothAdapter().setValue(bluetoothAdapter);
 
+        // Get the companion device manager and update the vm
         CompanionDeviceManager deviceManager = (CompanionDeviceManager) getSystemService(Context.COMPANION_DEVICE_SERVICE);
         bluetoothViewModel.getDeviceManager().setValue(deviceManager);
 
+        // Request enable bt if it is not on
         requestEnableBt(bluetoothAdapter);
+
+        // Retrieve paired device list
         retrieveDevices();
 
+        // Set up default fragment (Device List)
         if (savedInstanceState == null) {
             getSupportFragmentManager().beginTransaction()
                     .replace(R.id.container, DeviceListFragment.newInstance())
                     .commitNow();
         }
 
+        // Set up selection item observer
         deviceListViewModel.getSelectedItem().observe(this, new Observer<Integer>() {
             @Override
             public void onChanged(Integer position) {

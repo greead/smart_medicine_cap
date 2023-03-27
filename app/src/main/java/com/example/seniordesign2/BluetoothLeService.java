@@ -5,13 +5,16 @@ import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothGatt;
 import android.bluetooth.BluetoothGattCallback;
+import android.bluetooth.BluetoothGattCharacteristic;
 import android.bluetooth.BluetoothGattService;
 import android.bluetooth.BluetoothProfile;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.os.Binder;
 import android.os.IBinder;
 import android.util.Log;
 
+import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
 import java.util.ArrayList;
@@ -22,21 +25,25 @@ public class BluetoothLeService extends Service {
     public final static String ACTION_GATT_CONNECTED = "SENIOR_DESIGN.ACTION_GATT_DISCONNECTED";
     public final static String ACTION_GATT_DISCONNECTED = "SENIOR_DESIGN.ACTION_GATT_DISCONNECTED";
     public final static String ACTION_GATT_SERVICES_DISCOVERED = "SENIOR_DESIGN.ACTION_GATT_SERVICES_DISCOVERED";
-    private Binder binder = new LocalBinder();
+    public final static String ACTION_CHAR_DATA_READ = "SENIOR_DESIGN.ACITON_CHAR_DATA_READ";
+    public final static String EXTRA_DATA = "SENIOR_DESIGN.EXTRA_DATA";
+    private IBinder binder = new LocalBinder();
     private BluetoothViewModel bluetoothViewModel;
     private BluetoothGatt bluetoothGatt;
     private int connectionState;
 
-    // TODO Discover Services
 
+    /**
+     * Callback for GATT events
+     */
     private final BluetoothGattCallback bluetoothGattCallback = new BluetoothGattCallback() {
         @Override
         public void onConnectionStateChange(BluetoothGatt gatt, int status, int newState) {
             Log.e("APPDEBUG", "Connection State: " + newState );
             if(newState == BluetoothProfile.STATE_CONNECTED){
                 Log.e("APPDEBUG", "Connected");
-                broadcastUpdate(ACTION_GATT_CONNECTED);
                 connectionState = BluetoothProfile.STATE_CONNECTED;
+                broadcastUpdate(ACTION_GATT_CONNECTED);
                 try {
                     bluetoothGatt.discoverServices();
                 } catch (SecurityException e) {
@@ -59,9 +66,51 @@ public class BluetoothLeService extends Service {
             }
 
         }
+
+        @Override
+        public void onCharacteristicRead(@NonNull BluetoothGatt gatt, @NonNull BluetoothGattCharacteristic characteristic, @NonNull byte[] value, int status) {
+            if(status == BluetoothGatt.GATT_SUCCESS) {
+                Log.e("APPDEBUG", "onCharacteristicRead received" + characteristic.toString());
+                broadcastUpdate(ACTION_CHAR_DATA_READ, characteristic);
+            }
+        }
     };
 
+    private void broadcastUpdate(final String action) {
+        sendBroadcast(new Intent(action));
+    }
 
+    private void broadcastUpdate(final String action, final BluetoothGattCharacteristic characteristic) {
+        final Intent intent = new Intent(action);
+        final byte[] data = characteristic.getValue();
+        if (data != null && data.length > 0) {
+            final StringBuilder stringBuilder = new StringBuilder(data.length);
+            for (byte datum : data) {
+                stringBuilder.append(String.format("%02X", datum));
+            }
+            intent.putExtra(EXTRA_DATA, new String(data) + "\n" + stringBuilder.toString());
+            Log.e("APPDEBUG", "Broadcasting Characteristic: " + new String(data) + "\n" + stringBuilder.toString());
+        }
+        sendBroadcast(intent);
+    }
+
+    class LocalBinder extends Binder {
+        public BluetoothLeService getService() {
+            return BluetoothLeService.this;
+        }
+    }
+
+    @Nullable
+    @Override
+    public IBinder onBind(Intent intent) {
+        return binder;
+    }
+
+    @Override
+    public boolean onUnbind(Intent intent) {
+        close();
+        return super.onUnbind(intent);
+    }
 
     public boolean initialize(BluetoothViewModel bluetoothViewModel) {
         this.bluetoothViewModel = bluetoothViewModel;
@@ -72,18 +121,6 @@ public class BluetoothLeService extends Service {
         return true;
     }
 
-    @Nullable
-    @Override
-    public IBinder onBind(Intent intent) {
-        return binder;
-    }
-
-    class LocalBinder extends Binder {
-        public BluetoothLeService getService() {
-            return BluetoothLeService.this;
-        }
-    }
-    // TODO CONNECT TO A DEVICE
     public boolean connect() {
         if (bluetoothViewModel == null || bluetoothViewModel.getBluetoothDevice().getValue() == null) {
             Log.e("APPDEBUG", "BluetoothViewModel not initialized or unspecified device");
@@ -105,13 +142,57 @@ public class BluetoothLeService extends Service {
         }
     }
 
-    private void broadcastUpdate(final String action) {
-        sendBroadcast(new Intent(action));
+    public void disconnect() {
+        if (bluetoothGatt == null) {
+            Log.e("APPDEBUG", "Not connected");
+            return;
+        }
+        try {
+            bluetoothGatt.disconnect();
+        } catch (SecurityException e) {
+            Log.e("APPDEBUG", "Could not disconnect due to permissions");
+        }
+    }
+
+    public void close() {
+        if (bluetoothGatt == null) {
+            return;
+        }
+        try {
+            bluetoothGatt.close();
+            bluetoothGatt = null;
+        } catch (SecurityException e) {
+            Log.e("APPDEBUG", "Could not close GATT server due to permissions");
+        }
+    }
+
+    public void readCharacteristic (BluetoothGattCharacteristic characteristic) {
+        if(bluetoothGatt == null) {
+            Log.e("APPDEBUG", "No GATT initialized");
+            return;
+        }
+        try {
+            bluetoothGatt.readCharacteristic(characteristic);
+        } catch (SecurityException e) {
+            Log.e("APPDEBUG", "Could not read characteristic due to permissions");
+        }
+    }
+
+    public void setCharacteristicNotification(BluetoothGattCharacteristic characteristic, boolean enabled) {
+        if(bluetoothGatt == null) {
+            Log.e("APPDEBUG", "No GATT initialized");
+            return;
+        }
+        try {
+            bluetoothGatt.setCharacteristicNotification(characteristic, enabled);
+        } catch (SecurityException e) {
+            Log.e("APPDEBUG", "Could not set characteristic notifications due to permissions");
+        }
     }
 
     public ArrayList<BluetoothGattService> getSupportedGattServices() {
         if(bluetoothGatt == null) return null;
-        return (ArrayList<BluetoothGattService>) bluetoothGatt.getServices();
+        return new ArrayList<>(bluetoothGatt.getServices());
     }
 
 }

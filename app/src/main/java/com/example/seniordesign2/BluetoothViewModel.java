@@ -28,6 +28,7 @@ public class BluetoothViewModel extends ViewModel {
     private MutableLiveData<ArrayList<ScanResult>> scanResultsList;
     private MutableLiveData<Integer> connectionStatus;
     private MutableLiveData<ArrayList<BluetoothGattService>> gattServices;
+    private MutableLiveData<String> extraData;
     private MutableLiveData<Boolean> attemptConnectFlag;
 
     public BluetoothViewModel() {
@@ -96,6 +97,13 @@ public class BluetoothViewModel extends ViewModel {
             gattServices.setValue(new ArrayList<>());
         }
         return gattServices;
+    }
+
+    public MutableLiveData<String> getExtraData() {
+        if(extraData == null) {
+            extraData = new MutableLiveData<>();
+        }
+        return extraData;
     }
 
     public MutableLiveData<Boolean> getAttemptConnectFlag() {
