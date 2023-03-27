@@ -130,7 +130,8 @@ public class BluetoothLeService extends Service {
             final BluetoothDevice device = bluetoothViewModel.getBluetoothDevice().getValue();
             // Connect to GATT server
             Log.e("APPDEBUG", "Device attempting to connect");
-            bluetoothGatt = device.connectGatt(this, true, bluetoothGattCallback);
+            bluetoothGatt = device.connectGatt(this, false, bluetoothGattCallback);
+            bluetoothGatt.connect();
 
             return true;
         } catch (IllegalArgumentException e) {
