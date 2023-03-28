@@ -7,6 +7,7 @@ import androidx.lifecycle.Observer;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.room.Room;
 
+import android.Manifest;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothGattCharacteristic;
@@ -32,6 +33,10 @@ import com.example.seniordesign2.ui.main.DeviceListViewModel;
 
 import java.util.ArrayList;
 
+/**
+ * Main activity
+ * Controls fragment flow and handles all general operations
+ */
 public class  MainActivity extends AppCompatActivity {
 
     private static final int REQUEST_ENABLE_BT = 1;
@@ -98,6 +103,12 @@ public class  MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.SEND_SMS) != PackageManager.PERMISSION_GRANTED) {
+            requestPermissions(new String[]{Manifest.permission.SEND_SMS}, 7);
+        }
+        SMSHandler smsHandler = new SMSHandler(this);
+        smsHandler.sendSMS("test message", "");
 
         // Set up device log vm
         deviceLogViewModel = new ViewModelProvider(this).get(DeviceLogViewModel.class);

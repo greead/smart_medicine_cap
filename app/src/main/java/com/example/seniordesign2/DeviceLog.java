@@ -13,6 +13,9 @@ import androidx.room.RoomDatabase;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Room database and associated classes and methods to control database flow
+ */
 @Database(entities = {DeviceLog.Entry.class}, version = 1)
 public abstract class DeviceLog extends RoomDatabase {
 

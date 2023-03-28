@@ -27,6 +27,9 @@ import com.example.seniordesign2.R;
 import java.util.ArrayList;
 import java.util.Set;
 
+/**
+ * Fragment or displaying the device list and allowing pairing
+ */
 public class DeviceListFragment extends Fragment implements DeviceListAdapter.OnNoteListener {
 
     private BluetoothViewModel bluetoothViewModel;

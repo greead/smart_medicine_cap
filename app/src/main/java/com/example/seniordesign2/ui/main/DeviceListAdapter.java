@@ -17,6 +17,9 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.Set;
 
+/**
+ * Custom adapter for showing device list information
+ */
 public class DeviceListAdapter extends RecyclerView.Adapter<DeviceListAdapter.ViewHolder> {
     private ArrayList<BluetoothDevice> deviceList;
     private OnNoteListener onNoteListener;
