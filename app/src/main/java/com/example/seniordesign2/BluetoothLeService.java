@@ -31,6 +31,7 @@ public class BluetoothLeService extends Service {
     private BluetoothViewModel bluetoothViewModel;
     private BluetoothGatt bluetoothGatt;
     private int connectionState;
+    private int connectionAttempts = 0;
 
 
     /**
@@ -40,6 +41,22 @@ public class BluetoothLeService extends Service {
         @Override
         public void onConnectionStateChange(BluetoothGatt gatt, int status, int newState) {
             Log.e("APPDEBUG", "Connection State: " + newState );
+            if(status != BluetoothGatt.GATT_SUCCESS) {
+                try {
+                    bluetoothGatt.close();
+                } catch (SecurityException e) {
+                    Log.e("APPDEBUG", "Could not close GATT due to permissions");
+                }
+                bluetoothGatt = null;
+                if (connectionAttempts < 5) {
+                    connectionAttempts ++;
+                    connect();
+                    return;
+                } else {
+                    connectionAttempts = 0;
+                    return;
+                }
+            }
             Log.e("APPDEBUG", "Connection Status: " + status);
             if(newState == BluetoothProfile.STATE_CONNECTED){
                 Log.e("APPDEBUG", "Connected");
