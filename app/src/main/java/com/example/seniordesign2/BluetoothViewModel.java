@@ -15,6 +15,9 @@ import androidx.lifecycle.ViewModel;
 import java.util.ArrayList;
 import java.util.regex.Pattern;
 
+/**
+ * View model for live data related to BLE activities and transactions
+ */
 public class BluetoothViewModel extends ViewModel {
     public static final String DEVICE_NAME = "SMART_MEDICINE_CAP";
     public static final int REQUEST_SELECT_DEVICE = 3;

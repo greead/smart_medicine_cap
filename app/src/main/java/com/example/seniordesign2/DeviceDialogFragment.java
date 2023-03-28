@@ -26,6 +26,9 @@ import android.widget.Toast;
 
 import java.util.List;
 
+/**
+ * Fragment for displaying device dialog and BLE transactions
+ */
 public class DeviceDialogFragment extends Fragment {
     private static final String ARG_POSITION = "POSITION";
     private int position;

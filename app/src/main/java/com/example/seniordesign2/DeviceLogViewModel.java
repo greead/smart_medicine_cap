@@ -7,6 +7,9 @@ import androidx.lifecycle.ViewModel;
 
 import java.util.ArrayList;
 
+/**
+ * View model for live data related to the device log database and database transactions
+ */
 public class DeviceLogViewModel extends ViewModel {
 
     private MutableLiveData<DeviceLog> deviceLog;

@@ -20,6 +20,9 @@ import androidx.annotation.Nullable;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Service for BLE and GATT events and broadcasts
+ */
 public class BluetoothLeService extends Service {
     // Constants
     public final static String ACTION_GATT_CONNECTED = "SENIOR_DESIGN.ACTION_GATT_DISCONNECTED";
