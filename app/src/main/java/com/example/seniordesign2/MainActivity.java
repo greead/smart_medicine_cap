@@ -103,12 +103,12 @@ public class  MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-
-        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.SEND_SMS) != PackageManager.PERMISSION_GRANTED) {
-            requestPermissions(new String[]{Manifest.permission.SEND_SMS}, 7);
-        }
-        SMSHandler smsHandler = new SMSHandler(this);
-        smsHandler.sendSMS("test message", "");
+//
+//        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.SEND_SMS) != PackageManager.PERMISSION_GRANTED) {
+//            requestPermissions(new String[]{Manifest.permission.SEND_SMS}, 7);
+//        }
+//        SMSHandler smsHandler = new SMSHandler(this);
+//        smsHandler.sendSMS("test message", "");
 
         // Set up device log vm
         deviceLogViewModel = new ViewModelProvider(this).get(DeviceLogViewModel.class);
