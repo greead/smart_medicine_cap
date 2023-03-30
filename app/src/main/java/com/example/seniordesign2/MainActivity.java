@@ -224,7 +224,14 @@ public class  MainActivity extends AppCompatActivity {
 
     private void retrieveDevices() {
         try {
-            bluetoothViewModel.getPairedDevices().setValue(new ArrayList<>(bluetoothAdapter.getBondedDevices()));
+            ArrayList<BluetoothDevice> pairedDevices = new ArrayList<>(bluetoothAdapter.getBondedDevices());
+            ArrayList<BluetoothDevice> acceptedDevices = new ArrayList<>();
+            for (BluetoothDevice pairedDevice : pairedDevices) {
+                if(pairedDevice.getName().equals("SMART_MEDICINE_CAP")) {
+                    acceptedDevices.add(pairedDevice);
+                }
+            }
+            bluetoothViewModel.getPairedDevices().setValue(acceptedDevices);
         } catch (SecurityException e) {
             Toast.makeText(this, "Could not retrieve bluetooth devices", Toast.LENGTH_SHORT).show();
         }
