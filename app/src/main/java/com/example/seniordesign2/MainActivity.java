@@ -264,7 +264,9 @@ public class  MainActivity extends AppCompatActivity {
             Log.e("SERVICEDEBUG", gattService.getUuid().toString() + " | " + gattService);
             for(BluetoothGattCharacteristic characteristic : gattService.getCharacteristics()) {
                 Log.e("SERVICEDEBUG", "\t" + characteristic.getUuid().toString() + " | " + characteristic);
-                bluetoothService.readCharacteristic(characteristic);
+                if(characteristic.getUuid().toString().equals("beb5483e-36e1-4688-b7f5-ea07361b26a8")) {
+                    bluetoothService.readCharacteristic(characteristic);
+                }
             }
 
         }
