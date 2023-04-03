@@ -91,8 +91,9 @@ public class  MainActivity extends AppCompatActivity {
                 bluetoothViewModel.getGattServices()
                         .setValue(bluetoothService.getSupportedGattServices());
                 displayGattServices(bluetoothViewModel.getGattServices().getValue());
+
             } else if (BluetoothLeService.ACTION_CHAR_DATA_READ.equals(action)) {
-//                displayData(intent.getStringExtra(BluetoothLeService.EXTRA_DATA));
+                Log.e("SERVICEDEBUG", intent.getStringExtra(BluetoothLeService.EXTRA_DATA));
                 bluetoothViewModel.getExtraData()
                         .setValue(intent.getStringExtra(BluetoothLeService.EXTRA_DATA));
             }
@@ -263,6 +264,7 @@ public class  MainActivity extends AppCompatActivity {
             Log.e("SERVICEDEBUG", gattService.getUuid().toString() + " | " + gattService);
             for(BluetoothGattCharacteristic characteristic : gattService.getCharacteristics()) {
                 Log.e("SERVICEDEBUG", "\t" + characteristic.getUuid().toString() + " | " + characteristic);
+                bluetoothService.readCharacteristic(characteristic);
             }
 
         }
