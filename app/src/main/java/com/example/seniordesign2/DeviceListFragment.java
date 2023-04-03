@@ -1,4 +1,4 @@
-package com.example.seniordesign2.ui.main;
+package com.example.seniordesign2;
 
 import androidx.lifecycle.Observer;
 import androidx.lifecycle.ViewModelProvider;
@@ -21,11 +21,7 @@ import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.Toast;
 
-import com.example.seniordesign2.BluetoothViewModel;
-import com.example.seniordesign2.R;
-
 import java.util.ArrayList;
-import java.util.Set;
 
 /**
  * Fragment or displaying the device list and allowing pairing

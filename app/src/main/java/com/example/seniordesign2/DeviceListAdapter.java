@@ -1,4 +1,4 @@
-package com.example.seniordesign2.ui.main;
+package com.example.seniordesign2;
 
 import android.bluetooth.BluetoothDevice;
 import android.util.Log;
@@ -10,12 +10,7 @@ import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
-import com.example.seniordesign2.R;
-
-import java.lang.reflect.Array;
 import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.Set;
 
 /**
  * Custom adapter for showing device list information
