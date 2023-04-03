@@ -89,7 +89,7 @@ public class BluetoothLeService extends Service {
         @Override
         public void onCharacteristicRead(@NonNull BluetoothGatt gatt, @NonNull BluetoothGattCharacteristic characteristic, @NonNull byte[] value, int status) {
             if(status == BluetoothGatt.GATT_SUCCESS) {
-                Log.e("APPDEBUG", "onCharacteristicRead received" + characteristic.toString());
+                Log.e("APPDEBUG", "onCharacteristicRead received" + characteristic.toString() + " | " + value.toString() + " | " + String.valueOf(value));
                 broadcastUpdate(ACTION_CHAR_DATA_READ, characteristic);
             }
         }
