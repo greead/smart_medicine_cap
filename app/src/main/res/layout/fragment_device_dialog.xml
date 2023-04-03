@@ -11,28 +11,83 @@
         android:orientation="vertical">
 
         <TextView
-            android:id="@+id/txtDeviceNameTitle"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:gravity="center_horizontal"
-            android:layout_marginTop="20dp"
-            android:textSize="20dp"
-            android:textStyle="bold"
-            android:text="Device Name" />
-
-        <Button
-            android:id="@+id/btnConnectDevice"
+            android:id="@+id/txtDeviceAlias"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Connect Device"/>
+            android:gravity="center_horizontal"
+            android:layout_marginTop="20dp"
+            android:textSize="20sp"
+            android:textStyle="bold"
+            android:text="Device Alias" />
 
         <TextView
             android:id="@+id/txtDialog"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:gravity="center_horizontal"
-            android:layout_marginTop="50dp"
-            android:text="NOT CONNECTED"/>
+            android:text="@string/not_connected"/>
+
+        <Button
+            android:id="@+id/btnConnectDevice"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/connect_device"/>
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_horizontal"
+            android:layout_marginTop="30dp"
+            android:text="No Entries"/>
+
+        <Button
+            android:id="@+id/btnViewLogs"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/view_logs"/>
+
+        <TextView
+            android:id="@+id/txtAlarmStatus"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_horizontal"
+            android:layout_marginTop="30dp"
+            android:text="@string/no_alarm_set"/>
+
+        <Button
+            android:id="@+id/btnSetAlarm"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/set_alarm"/>
+
+        <TextView
+            android:id="@+id/txtContactStatus"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_horizontal"
+            android:layout_marginTop="30dp"
+            android:text="@string/no_contact_set"/>
+
+        <Button
+            android:id="@+id/btnSetContact"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/set_contact"/>
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="30dp"
+            android:gravity="center_horizontal"
+            android:text="@string/device_name"/>
+
+        <Button
+            android:id="@+id/btnChangeDeviceName"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/change_device_name"/>
+
+
 
     </LinearLayout>
 </FrameLayout>

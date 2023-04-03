@@ -1,7 +1,68 @@
 package com.example.seniordesign2;
 
+import android.app.AlarmManager;
+import android.app.PendingIntent;
+import android.content.BroadcastReceiver;
+import android.content.Context;
+import android.content.Intent;
+import android.widget.Toast;
+
 /**
- * Class for handling alarms and date-time data
+ * Class for handling alarms
  */
 public class AlarmsHandler {
+
+    Context context;
+    AlarmManager alarmManager;
+    public AlarmsHandler(Context context) {
+        this.context = context;
+        alarmManager = context.getSystemService(AlarmManager.class);
+    }
+
+    public void setNotifyAlarm(int minutesAhead) {
+        Intent intent = new Intent(context, AlarmReceiver.class);
+        intent.setAction(AlarmReceiver.ACTION_ALARM_NOTIFY);
+        intent.putExtra(AlarmReceiver.EXTRA_DATA, "Alarm Notify at " + System.currentTimeMillis());
+
+        int pendingIntentRequestCode = 0;
+        int flag = 0;
+        PendingIntent pendingIntent = PendingIntent.getBroadcast(context, pendingIntentRequestCode, intent, flag);
+
+        long alarmDelay = minutesAhead * 60_000L;
+        long alarmTime = System.currentTimeMillis() + alarmDelay;
+
+        alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, alarmTime, pendingIntent);
+    }
+
+    public void setCheckAlarm(int minutesAhead, int minutesInterval) {
+        Intent intent = new Intent(context, AlarmReceiver.class);
+        intent.setAction(AlarmReceiver.ACTION_ALARM_CHECK);
+        intent.putExtra(AlarmReceiver.EXTRA_DATA, "Alarm Check at " + System.currentTimeMillis());
+
+        int pendingIntentRequestCode = 0;
+        int flag = 0;
+        PendingIntent pendingIntent = PendingIntent.getBroadcast(context, pendingIntentRequestCode, intent, flag);
+
+        long alarmDelay = minutesAhead * 60_000L;
+        long alarmTime = System.currentTimeMillis() + alarmDelay;
+
+        long intervalDelay = minutesInterval * 60_000L;
+        long intervalTime = System.currentTimeMillis() + intervalDelay;
+
+        alarmManager.setRepeating(AlarmManager.RTC_WAKEUP, alarmTime, intervalTime, pendingIntent);
+    }
+
+    static class AlarmReceiver extends BroadcastReceiver {
+        public final static String ACTION_ALARM_NOTIFY = "SENIOR_DESIGN.ACTION_ALARM_BROADCAST";
+        public final static String ACTION_ALARM_CHECK = "SENIOR_DESIGN.ACTION_ALARM_CHECK";
+        public final static String EXTRA_DATA = "EXTRA_DATA";
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            if (intent.getAction().equals(ACTION_ALARM_NOTIFY)) {
+                String intentExtra = intent.getStringExtra(EXTRA_DATA);
+                Toast.makeText(context, intentExtra, Toast.LENGTH_LONG).show();
+            }
+        }
+    }
+
 }

@@ -1,6 +1,17 @@
 <resources>
     <string name="app_name">SeniorDesign2</string>
     <string name="device_name_error">DEVICE NAME ERROR</string>
-<!-- TODO: Remove or change this placeholder text -->
+    <!-- TODO: Remove or change this placeholder text -->
     <string name="hello_blank_fragment">Hello blank fragment</string>
+    <string name="connected_devices">Connected Devices</string>
+    <string name="scan_devices">Scan Devices</string>
+    <string name="connect_device">Connect Device</string>
+    <string name="not_connected">NOT CONNECTED</string>
+    <string name="device_name">Device Name</string>
+    <string name="view_logs">View Logs</string>
+    <string name="change_device_name">Change Device Name</string>
+    <string name="no_alarm_set">No Alarm Set</string>
+    <string name="set_alarm">Set Alarm</string>
+    <string name="no_contact_set">No Contact Set</string>
+    <string name="set_contact">Set Contact</string>
 </resources>

@@ -1,4 +1,4 @@
-package com.example.seniordesign2.ui.main;
+package com.example.seniordesign2;
 
 import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.ViewModel;

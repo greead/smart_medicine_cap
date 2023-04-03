@@ -3,11 +3,11 @@ package com.example.seniordesign2;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
+import androidx.fragment.app.Fragment;
 import androidx.lifecycle.Observer;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.room.Room;
 
-import android.Manifest;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothGattCharacteristic;
@@ -28,9 +28,7 @@ import android.os.IBinder;
 import android.util.Log;
 import android.widget.Toast;
 
-import com.example.seniordesign2.ui.main.DeviceListFragment;
-import com.example.seniordesign2.ui.main.DeviceListViewModel;
-
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 
 /**
@@ -53,6 +51,8 @@ public class  MainActivity extends AppCompatActivity {
     private boolean connected = false;
     private DeviceLog db;
     private DeviceLog.LogDao logDao;
+
+    ArrayDeque<Fragment> fragmentStack = new ArrayDeque<>();
 
     private ArrayList<DeviceLog.Entry> entries;
     private ServiceConnection serviceConnection = new ServiceConnection() {
@@ -88,9 +88,9 @@ public class  MainActivity extends AppCompatActivity {
                 bluetoothViewModel.getConnectionStatus()
                         .setValue(BluetoothProfile.STATE_DISCONNECTED);
             } else if (BluetoothLeService.ACTION_GATT_SERVICES_DISCOVERED.equals(action)) {
-//                displayGattServices(bluetoothService.getSupportedGattServices());
                 bluetoothViewModel.getGattServices()
                         .setValue(bluetoothService.getSupportedGattServices());
+                displayGattServices(bluetoothViewModel.getGattServices().getValue());
             } else if (BluetoothLeService.ACTION_CHAR_DATA_READ.equals(action)) {
 //                displayData(intent.getStringExtra(BluetoothLeService.EXTRA_DATA));
                 bluetoothViewModel.getExtraData()
@@ -178,8 +178,9 @@ public class  MainActivity extends AppCompatActivity {
 
         // Set up default fragment (Device List)
         if (savedInstanceState == null) {
+            fragmentStack.addFirst(DeviceListFragment.newInstance());
             getSupportFragmentManager().beginTransaction()
-                    .replace(R.id.container, DeviceListFragment.newInstance())
+                    .replace(R.id.container, fragmentStack.getFirst())
                     .commitNow();
         }
 
@@ -187,8 +188,9 @@ public class  MainActivity extends AppCompatActivity {
         deviceListViewModel.getSelectedItem().observe(this, new Observer<Integer>() {
             @Override
             public void onChanged(Integer position) {
+                fragmentStack.addFirst(DeviceDialogFragment.newInstance(position));
                 getSupportFragmentManager().beginTransaction()
-                        .replace(R.id.container, DeviceDialogFragment.newInstance(position))
+                        .replace(R.id.container, fragmentStack.getFirst())
                         .commitNow();
             }
         });
@@ -224,7 +226,14 @@ public class  MainActivity extends AppCompatActivity {
 
     private void retrieveDevices() {
         try {
-            bluetoothViewModel.getPairedDevices().setValue(new ArrayList<>(bluetoothAdapter.getBondedDevices()));
+            ArrayList<BluetoothDevice> pairedDevices = new ArrayList<>(bluetoothAdapter.getBondedDevices());
+            ArrayList<BluetoothDevice> acceptedDevices = new ArrayList<>();
+            for (BluetoothDevice pairedDevice : pairedDevices) {
+                if(pairedDevice.getName().equals("SMART_MEDICINE_CAP")) {
+                    acceptedDevices.add(pairedDevice);
+                }
+            }
+            bluetoothViewModel.getPairedDevices().setValue(acceptedDevices);
         } catch (SecurityException e) {
             Toast.makeText(this, "Could not retrieve bluetooth devices", Toast.LENGTH_SHORT).show();
         }
@@ -251,9 +260,9 @@ public class  MainActivity extends AppCompatActivity {
         if (gattServices == null) return;
         String uuid = null;
         for(BluetoothGattService gattService : gattServices) {
-            Log.e("SERVICEDEBUG", gattService.getUuid().toString());
+            Log.e("SERVICEDEBUG", gattService.getUuid().toString() + " | " + gattService);
             for(BluetoothGattCharacteristic characteristic : gattService.getCharacteristics()) {
-                Log.e("SERVICEDEBUG", characteristic.toString());
+                Log.e("SERVICEDEBUG", "\t" + characteristic.getUuid().toString() + " | " + characteristic);
             }
 
         }
@@ -261,9 +270,12 @@ public class  MainActivity extends AppCompatActivity {
 
     @Override
     public void onBackPressed() {
-        getSupportFragmentManager().beginTransaction()
-                .replace(R.id.container, DeviceListFragment.newInstance())
-                .commitNow();
+        if (fragmentStack.size() > 1) {
+            fragmentStack.removeFirst();
+            getSupportFragmentManager().beginTransaction()
+                    .replace(R.id.container, fragmentStack.getFirst())
+                    .commitNow();
+        }
     }
 
     @Override
