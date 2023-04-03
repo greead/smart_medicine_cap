@@ -10,7 +10,6 @@ import androidx.room.PrimaryKey;
 import androidx.room.Query;
 import androidx.room.RoomDatabase;
 
-import java.util.ArrayList;
 import java.util.List;
 
 /**
