@@ -2,12 +2,15 @@ package com.example.seniordesign2;
 
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
+import android.bluetooth.BluetoothGatt;
 import android.bluetooth.BluetoothGattService;
 import android.bluetooth.BluetoothManager;
 import android.bluetooth.le.ScanResult;
 import android.companion.AssociationRequest;
 import android.companion.BluetoothLeDeviceFilter;
 import android.companion.CompanionDeviceManager;
+import android.util.ArrayMap;
+import android.util.Pair;
 
 import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.ViewModel;
@@ -33,6 +36,8 @@ public class BluetoothViewModel extends ViewModel {
     private MutableLiveData<String> extraData;
     private MutableLiveData<Boolean> attemptConnectFlag;
 
+    private MutableLiveData<ArrayMap<String, BluetoothGatt>> connectedDevices;
+
     public BluetoothViewModel() {
         deviceFilter = new BluetoothLeDeviceFilter.Builder()
                 .setNamePattern(Pattern.compile(DEVICE_NAME))
@@ -49,6 +54,14 @@ public class BluetoothViewModel extends ViewModel {
             pairedDevices.setValue(new ArrayList<>());
         }
         return pairedDevices;
+    }
+
+    public MutableLiveData<ArrayMap<String, BluetoothGatt>> getConnectedDevices() {
+        if(connectedDevices == null) {
+            connectedDevices = new MutableLiveData<>();
+            connectedDevices.setValue(new ArrayMap<>());
+        }
+        return connectedDevices;
     }
 
     public MutableLiveData<BluetoothAdapter> getBluetoothAdapter() {

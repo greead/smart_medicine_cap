@@ -9,13 +9,19 @@ import android.bluetooth.BluetoothGattService;
 import android.bluetooth.BluetoothProfile;
 import android.content.Intent;
 import android.os.Binder;
+import android.os.Handler;
 import android.os.IBinder;
+import android.os.Looper;
+import android.os.Message;
 import android.util.Log;
+import android.util.Pair;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
 import java.util.ArrayList;
+
+import kotlin.internal.RequireKotlin;
 
 /**
  * Service for BLE and GATT events and broadcasts
@@ -27,7 +33,7 @@ public class BluetoothLeService extends Service {
     public final static String ACTION_GATT_SERVICES_DISCOVERED = "SENIOR_DESIGN.ACTION_GATT_SERVICES_DISCOVERED";
     public final static String ACTION_CHAR_DATA_READ = "SENIOR_DESIGN.ACITON_CHAR_DATA_READ";
     public final static String EXTRA_DATA = "SENIOR_DESIGN.EXTRA_DATA";
-    private IBinder binder = new LocalBinder();
+    private final IBinder binder = new LocalBinder();
     private BluetoothViewModel bluetoothViewModel;
     private BluetoothGatt bluetoothGatt;
 
@@ -38,6 +44,7 @@ public class BluetoothLeService extends Service {
     private final BluetoothGattCallback bluetoothGattCallback = new BluetoothGattCallback() {
         @Override
         public void onConnectionStateChange(BluetoothGatt gatt, int status, int newState) {
+            bluetoothGatt = gatt;
             String deviceAddress = gatt.getDevice().getAddress();
 
             if(status == BluetoothGatt.GATT_SUCCESS) {
@@ -45,7 +52,8 @@ public class BluetoothLeService extends Service {
                     Log.e("APPDEBUG", deviceAddress + " Successfully connected");
                     try {
                         broadcastUpdate(ACTION_GATT_CONNECTED);
-                        gatt.discoverServices();
+                        bluetoothViewModel.getConnectedDevices().getValue().put(deviceAddress, gatt);
+                        new Handler(Looper.getMainLooper()).post(gatt::discoverServices);
                     } catch (SecurityException e) {
                         Log.e("APPDEBUG", "Could not perform service discovery due to permissions");
                     }
@@ -85,6 +93,7 @@ public class BluetoothLeService extends Service {
             if(status == BluetoothGatt.GATT_SUCCESS) {
                 Log.e("APPDEBUG", "onCharacteristicRead received" + characteristic.toString() + " | " + value.toString() + " | " + String.valueOf(value));
                 broadcastUpdate(ACTION_CHAR_DATA_READ, characteristic);
+
             }
         }
     };
