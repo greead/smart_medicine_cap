@@ -22,7 +22,6 @@ public class BluetoothViewModel extends ViewModel {
     public static final String DEVICE_NAME = "SMART_MEDICINE_CAP";
     public static final int REQUEST_SELECT_DEVICE = 3;
     private MutableLiveData<ArrayList<BluetoothDevice>> pairedDevices;
-    private MutableLiveData<BluetoothManager> bluetoothManager;
     private MutableLiveData<BluetoothAdapter> bluetoothAdapter;
     private MutableLiveData<BluetoothDevice> bluetoothDevice;
     private BluetoothLeDeviceFilter deviceFilter;
@@ -50,13 +49,6 @@ public class BluetoothViewModel extends ViewModel {
             pairedDevices.setValue(new ArrayList<>());
         }
         return pairedDevices;
-    }
-
-    public MutableLiveData<BluetoothManager> getBluetoothManager() {
-        if(bluetoothManager == null) {
-            bluetoothManager = new MutableLiveData<>();
-        }
-        return bluetoothManager;
     }
 
     public MutableLiveData<BluetoothAdapter> getBluetoothAdapter() {

@@ -58,6 +58,7 @@ public class DeviceListFragment extends Fragment implements DeviceListAdapter.On
         btnScanDevices.setOnClickListener(view -> {
             bluetoothViewModel.getDeviceManager().getValue().associate(bluetoothViewModel.getPairingRequest(), new CompanionDeviceManager.Callback() {
                 public void onDeviceFound(@NonNull IntentSender chooserLauncher) {
+                    Log.e("APPDEBUG", "DEVICE FOUND");
                     try {
                         getActivity().startIntentSenderForResult(chooserLauncher, bluetoothViewModel.REQUEST_SELECT_DEVICE, null, 0, 0, 0);
                     } catch (IntentSender.SendIntentException e) {

@@ -30,8 +30,6 @@ public class BluetoothLeService extends Service {
     private IBinder binder = new LocalBinder();
     private BluetoothViewModel bluetoothViewModel;
     private BluetoothGatt bluetoothGatt;
-    private int connectionState;
-    private int connectionAttempts = 0;
 
 
     /**
@@ -40,38 +38,34 @@ public class BluetoothLeService extends Service {
     private final BluetoothGattCallback bluetoothGattCallback = new BluetoothGattCallback() {
         @Override
         public void onConnectionStateChange(BluetoothGatt gatt, int status, int newState) {
-            Log.e("APPDEBUG", "Connection State: " + newState );
-            Log.e("APPDEBUG", "Connection Status: " + status);
-            if(status != BluetoothGatt.GATT_SUCCESS) {
-                try {
-                    bluetoothGatt.close();
-                } catch (SecurityException e) {
-                    Log.e("APPDEBUG", "Could not close GATT due to permissions");
-                }
-                bluetoothGatt = null;
-                if (connectionAttempts < 5) {
-                    connectionAttempts ++;
-                    connect();
-                    return;
-                } else {
-                    connectionAttempts = 0;
-                    return;
-                }
-            }
-            if(newState == BluetoothProfile.STATE_CONNECTED){
-                Log.e("APPDEBUG", "Connected");
-                connectionState = BluetoothProfile.STATE_CONNECTED;
-                broadcastUpdate(ACTION_GATT_CONNECTED);
-                try {
-                    bluetoothGatt.discoverServices();
-                } catch (SecurityException e) {
-                    Log.e("APPDEBUG", "Could not perform service discovery due to permissions");
-                }
+            String deviceAddress = gatt.getDevice().getAddress();
 
-            } else if (newState == BluetoothProfile.STATE_DISCONNECTED) {
-                Log.e("APPDEBUG", "Disconnected");
-                broadcastUpdate(ACTION_GATT_DISCONNECTED);
-                connectionState = BluetoothProfile.STATE_DISCONNECTED;
+            if(status == BluetoothGatt.GATT_SUCCESS) {
+                if(newState == BluetoothProfile.STATE_CONNECTED) {
+                    Log.e("APPDEBUG", deviceAddress + " Successfully connected");
+                    try {
+                        broadcastUpdate(ACTION_GATT_CONNECTED);
+                        gatt.discoverServices();
+                    } catch (SecurityException e) {
+                        Log.e("APPDEBUG", "Could not perform service discovery due to permissions");
+                    }
+                    // TODO
+                } else if (newState == BluetoothProfile.STATE_DISCONNECTED) {
+                    Log.e("APPDEBUG", deviceAddress + " Successfully disconnected");
+                    try {
+                        broadcastUpdate(ACTION_GATT_DISCONNECTED);
+                        gatt.close();
+                    } catch (SecurityException e) {
+                        Log.e("APPDEBUG", "GATT failed to close due to permissions");
+                    }
+                }
+            } else {
+                Log.e("APPDEBUG", "Device: " + deviceAddress + ", Error: " + status);
+                try {
+                    gatt.close();
+                } catch (SecurityException e) {
+                    Log.e("APPDEBUG", "GATT failed to close due to permissions");
+                }
             }
         }
 
@@ -148,7 +142,7 @@ public class BluetoothLeService extends Service {
         try {
             final BluetoothDevice device = bluetoothViewModel.getBluetoothDevice().getValue();
             // Connect to GATT server
-            Log.e("APPDEBUG", "Device attempting to connect");
+            Log.e("APPDEBUG", "Device attempting to connect: " + System.currentTimeMillis() + "ms");
             bluetoothGatt = device.connectGatt(this, false, bluetoothGattCallback, BluetoothDevice.TRANSPORT_LE);
 
             return true;

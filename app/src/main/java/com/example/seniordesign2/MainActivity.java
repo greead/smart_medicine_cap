@@ -3,7 +3,6 @@ package com.example.seniordesign2;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
-import androidx.fragment.app.Fragment;
 import androidx.lifecycle.Observer;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.room.Room;
@@ -28,7 +27,6 @@ import android.os.IBinder;
 import android.util.Log;
 import android.widget.Toast;
 
-import java.util.ArrayDeque;
 import java.util.ArrayList;
 
 /**
@@ -37,24 +35,43 @@ import java.util.ArrayList;
  */
 public class  MainActivity extends AppCompatActivity {
 
+    // Log Tags
+    private static final String DEBUG_TAG = "APPDEBUG";
+
+    // Activity Flags
     private static final int REQUEST_ENABLE_BT = 1;
     private static final int REQUEST_BT_PERMS = 2;
     private static final int REQUEST_SELECT_DEVICE = 3;
-    private static final int REQUEST_BOND_STATE_CHANGE = 4;
+    private static final int REQUEST_SMS_PERMS = 4;
+
+    // Permission Arrays
     private static final String[] BT_PERMS = {"android.permission.BLUETOOTH", "android.permission.BLUETOOTH_ADMIN", "android.permission.BLUETOOTH_CONNECT"};
-    private BluetoothManager bluetoothManager;
-    private BluetoothAdapter bluetoothAdapter;
+    private static final String[] SMS_PERMS = {"Manifest.permission.SEND_SMS"};
+    private static final String[] ALARM_PERMS = {"Manifest.permission.SET_EXACT_ALARM"};
+
+    // Bluetooth Fields
+    private BluetoothLeService bluetoothService;
+
+    // View Models
     private BluetoothViewModel bluetoothViewModel;
     private DeviceListViewModel deviceListViewModel;
     private DeviceLogViewModel deviceLogViewModel;
-    private BluetoothLeService bluetoothService;
-    private boolean connected = false;
-    private DeviceLog db;
-    private DeviceLog.LogDao logDao;
 
-    ArrayDeque<Fragment> fragmentStack = new ArrayDeque<>();
+    // Device Log Database
+    DeviceLog db;
+    DeviceLog.LogDao logDao;
+    ArrayList<DeviceLog.Entry> entries;
 
-    private ArrayList<DeviceLog.Entry> entries;
+    // Device UUIDs
+    private static final String SERVICE_UUID = "4FAFC201-1FB5-459E-8FCC-C5C9C331914B";
+    private static final String BATTERY_CHAR_UUID = "BEB5483E-36E1-4688-B7F5-EA07361B26A8";
+    private static final String OPEN_CLOSE_CHAR_UUID = "";
+    private static final String DEVICE_NAME = "SMART_MEDICINE_CAP";
+
+    // Fragment Stack
+    private FragmentStack fragmentStack;
+
+    // Bluetooth Service Connection
     private ServiceConnection serviceConnection = new ServiceConnection() {
         @Override
         public void onServiceConnected(ComponentName name, IBinder service) {
@@ -75,16 +92,15 @@ public class  MainActivity extends AppCompatActivity {
         }
     };
 
+    // Bluetooth Broadcast Receiver
     private final BroadcastReceiver gattUpdateReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
             final String action = intent.getAction();
             if(BluetoothLeService.ACTION_GATT_CONNECTED.equals(action)) {
-                connected = true;
                 bluetoothViewModel.getConnectionStatus()
                         .setValue(BluetoothProfile.STATE_CONNECTED);
             } else if (BluetoothLeService.ACTION_GATT_DISCONNECTED.equals(action)) {
-                connected = false;
                 bluetoothViewModel.getConnectionStatus()
                         .setValue(BluetoothProfile.STATE_DISCONNECTED);
             } else if (BluetoothLeService.ACTION_GATT_SERVICES_DISCOVERED.equals(action)) {
@@ -135,7 +151,7 @@ public class  MainActivity extends AppCompatActivity {
         registerReceiver(new BroadcastReceiver() {
             @Override
             public void onReceive(Context context, Intent intent) {
-                retrieveDevices();
+                retrievePairedDevices();
             }
         }, new IntentFilter(BluetoothDevice.ACTION_BOND_STATE_CHANGED));
 
@@ -159,42 +175,32 @@ public class  MainActivity extends AppCompatActivity {
         };
         bluetoothViewModel.getAttemptConnectFlag().observe(this, connectFlagObserver);
 
-        // Get the bluetooth manager and update the vm
-        bluetoothManager = getSystemService(BluetoothManager.class);
-        bluetoothViewModel.getBluetoothManager().setValue(bluetoothManager);
+        // Get the bluetooth manager
+        BluetoothManager bluetoothManager = getSystemService(BluetoothManager.class);
 
         // Get the bluetooth adapter and update the vm
-        bluetoothAdapter = bluetoothManager.getAdapter();
-        bluetoothViewModel.getBluetoothAdapter().setValue(bluetoothAdapter);
+        bluetoothViewModel.getBluetoothAdapter().setValue(bluetoothManager.getAdapter());
 
         // Get the companion device manager and update the vm
         CompanionDeviceManager deviceManager = (CompanionDeviceManager) getSystemService(Context.COMPANION_DEVICE_SERVICE);
         bluetoothViewModel.getDeviceManager().setValue(deviceManager);
 
         // Request enable bt if it is not on
-        requestEnableBt(bluetoothAdapter);
+        requestEnableBt(bluetoothViewModel.getBluetoothAdapter().getValue());
 
         // Retrieve paired device list
-        retrieveDevices();
+        retrievePairedDevices();
+
+        // Set up fragment stack
+        fragmentStack = new FragmentStack(getSupportFragmentManager(), R.id.container);
 
         // Set up default fragment (Device List)
         if (savedInstanceState == null) {
-            fragmentStack.addFirst(DeviceListFragment.newInstance());
-            getSupportFragmentManager().beginTransaction()
-                    .replace(R.id.container, fragmentStack.getFirst())
-                    .commitNow();
+            fragmentStack.setCurrent(DeviceListFragment.newInstance());
         }
 
         // Set up selection item observer
-        deviceListViewModel.getSelectedItem().observe(this, new Observer<Integer>() {
-            @Override
-            public void onChanged(Integer position) {
-                fragmentStack.addFirst(DeviceDialogFragment.newInstance(position));
-                getSupportFragmentManager().beginTransaction()
-                        .replace(R.id.container, fragmentStack.getFirst())
-                        .commitNow();
-            }
-        });
+        deviceListViewModel.getSelectedItem().observe(this, position -> fragmentStack.setCurrent(DeviceDialogFragment.newInstance(position)));
     }
 
     @Override
@@ -205,7 +211,7 @@ public class  MainActivity extends AppCompatActivity {
         registerReceiver(gattUpdateReceiver, makeGattUpdateIntentFilter());
         if (bluetoothService != null) {
             final boolean result = bluetoothService.connect();
-            Log.d("APPDEBUG", "Connect request result = " + result);
+            Log.e("APPDEBUG", "Connect request result = " + result);
         }
     }
 
@@ -225,9 +231,9 @@ public class  MainActivity extends AppCompatActivity {
         return intentFilter;
     }
 
-    private void retrieveDevices() {
+    private void retrievePairedDevices() {
         try {
-            ArrayList<BluetoothDevice> pairedDevices = new ArrayList<>(bluetoothAdapter.getBondedDevices());
+            ArrayList<BluetoothDevice> pairedDevices = new ArrayList<>(bluetoothViewModel.getBluetoothAdapter().getValue().getBondedDevices());
             ArrayList<BluetoothDevice> acceptedDevices = new ArrayList<>();
             for (BluetoothDevice pairedDevice : pairedDevices) {
                 if(pairedDevice.getName().equals("SMART_MEDICINE_CAP")) {
@@ -274,12 +280,7 @@ public class  MainActivity extends AppCompatActivity {
 
     @Override
     public void onBackPressed() {
-        if (fragmentStack.size() > 1) {
-            fragmentStack.removeFirst();
-            getSupportFragmentManager().beginTransaction()
-                    .replace(R.id.container, fragmentStack.getFirst())
-                    .commitNow();
-        }
+        fragmentStack.setPrevious();
     }
 
     @Override
@@ -288,7 +289,7 @@ public class  MainActivity extends AppCompatActivity {
         switch (requestCode) {
             case REQUEST_ENABLE_BT: {
                 if (resultCode == RESULT_OK) {
-                    retrieveDevices();
+                    retrievePairedDevices();
                 }
                 break;
             }
@@ -299,11 +300,12 @@ public class  MainActivity extends AppCompatActivity {
                 break;
             }
             case REQUEST_SELECT_DEVICE: {
+                Log.e("APPDEBUG", "REQUEST SELECT DEVICE: " + resultCode);
                 if (resultCode == RESULT_OK) {
                     ScanResult scanResult = data.getParcelableExtra(CompanionDeviceManager.EXTRA_DEVICE);
                     if(scanResult != null) {
                         try {
-                            scanResult.getDevice().createBond();
+                            Log.e("APPDEBUG", "BOND RESULT: " + scanResult.getDevice().createBond());
 
 
                         } catch (SecurityException e) {
