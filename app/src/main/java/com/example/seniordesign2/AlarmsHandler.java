@@ -1,11 +1,21 @@
 package com.example.seniordesign2;
 
 import android.app.AlarmManager;
+import android.app.Dialog;
 import android.app.PendingIntent;
+import android.app.TimePickerDialog;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.os.Bundle;
+import android.widget.TimePicker;
 import android.widget.Toast;
+
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import androidx.fragment.app.DialogFragment;
+
+import java.util.Calendar;
 
 /**
  * Class for handling alarms
@@ -62,6 +72,24 @@ public class AlarmsHandler {
                 String intentExtra = intent.getStringExtra(EXTRA_DATA);
                 Toast.makeText(context, intentExtra, Toast.LENGTH_LONG).show();
             }
+        }
+    }
+
+    private class TimePickerFragment extends DialogFragment implements TimePickerDialog.OnTimeSetListener {
+
+        @NonNull
+        @Override
+        public Dialog onCreateDialog(@Nullable Bundle savedInstanceState) {
+            final Calendar calendar = Calendar.getInstance();
+            int hour = calendar.get(Calendar.HOUR_OF_DAY);
+            int minute = calendar.get(Calendar.MINUTE);
+
+            return new TimePickerDialog(getActivity(), this, hour, minute, true);
+        }
+
+        @Override
+        public void onTimeSet(TimePicker timePicker, int i, int i1) {
+
         }
     }
 

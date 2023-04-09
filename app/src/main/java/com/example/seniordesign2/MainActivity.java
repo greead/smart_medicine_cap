@@ -1,5 +1,6 @@
 package com.example.seniordesign2;
 
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
@@ -28,6 +29,7 @@ import android.util.Log;
 import android.widget.Toast;
 
 import java.util.ArrayList;
+import java.util.Objects;
 
 /**
  * Main activity
@@ -36,7 +38,7 @@ import java.util.ArrayList;
 public class  MainActivity extends AppCompatActivity {
 
     // Log Tags
-    private static final String DEBUG_TAG = "APPDEBUG";
+    private static final String DEBUG_TAG = "APP-DEBUG";
 
     // Activity Flags
     private static final int REQUEST_ENABLE_BT = 1;
@@ -55,12 +57,10 @@ public class  MainActivity extends AppCompatActivity {
     // View Models
     private BluetoothViewModel bluetoothViewModel;
     private DeviceListViewModel deviceListViewModel;
-    private DeviceLogViewModel deviceLogViewModel;
+    private DatabaseViewModel databaseViewModel;
 
-    // Device Log Database
-    DeviceLog db;
-    DeviceLog.LogDao logDao;
-    ArrayList<DeviceLog.Entry> entries;
+    // Local Database
+    private LocalDatabase db;
 
     // Device UUIDs
     private static final String SERVICE_UUID = "4FAFC201-1FB5-459E-8FCC-C5C9C331914B";
@@ -72,13 +72,13 @@ public class  MainActivity extends AppCompatActivity {
     private FragmentStack fragmentStack;
 
     // Bluetooth Service Connection
-    private ServiceConnection serviceConnection = new ServiceConnection() {
+    private final ServiceConnection serviceConnection = new ServiceConnection() {
         @Override
         public void onServiceConnected(ComponentName name, IBinder service) {
             bluetoothService = ((BluetoothLeService.LocalBinder) service).getService();
             if (bluetoothService != null) {
                 if(!bluetoothService.initialize(bluetoothViewModel)) {
-                    Log.e("APPDEBUG", "Unable to initialize bluetooth");
+                    Log.e(DEBUG_TAG, "Unable to initialize bluetooth");
                     finish();
                 }
                 // perform device connection
@@ -97,21 +97,30 @@ public class  MainActivity extends AppCompatActivity {
         @Override
         public void onReceive(Context context, Intent intent) {
             final String action = intent.getAction();
-            if(BluetoothLeService.ACTION_GATT_CONNECTED.equals(action)) {
-                bluetoothViewModel.getConnectionStatus()
-                        .setValue(BluetoothProfile.STATE_CONNECTED);
-            } else if (BluetoothLeService.ACTION_GATT_DISCONNECTED.equals(action)) {
-                bluetoothViewModel.getConnectionStatus()
-                        .setValue(BluetoothProfile.STATE_DISCONNECTED);
-            } else if (BluetoothLeService.ACTION_GATT_SERVICES_DISCOVERED.equals(action)) {
-                bluetoothViewModel.getGattServices()
-                        .setValue(bluetoothService.getSupportedGattServices());
-                displayGattServices(bluetoothViewModel.getGattServices().getValue());
 
-            } else if (BluetoothLeService.ACTION_CHAR_DATA_READ.equals(action)) {
-                Log.e("SERVICEDEBUG", intent.getStringExtra(BluetoothLeService.EXTRA_DATA));
-                bluetoothViewModel.getExtraData()
-                        .setValue(intent.getStringExtra(BluetoothLeService.EXTRA_DATA));
+            switch (action) {
+                case BluetoothLeService.ACTION_GATT_CONNECTED:
+
+                    bluetoothViewModel.getConnectionStatus().setValue(BluetoothProfile.STATE_CONNECTED);
+
+                    break;
+                case BluetoothLeService.ACTION_GATT_DISCONNECTED:
+
+                    bluetoothViewModel.getConnectionStatus().setValue(BluetoothProfile.STATE_DISCONNECTED);
+
+                    break;
+                case BluetoothLeService.ACTION_GATT_SERVICES_DISCOVERED:
+
+                    bluetoothViewModel.getGattServices().setValue(bluetoothService.getSupportedGattServices());
+                    displayGattServices(bluetoothViewModel.getGattServices().getValue());
+
+                    break;
+                case BluetoothLeService.ACTION_CHAR_DATA_READ:
+
+                    Log.e(DEBUG_TAG, intent.getStringExtra(BluetoothLeService.EXTRA_DATA));
+                    bluetoothViewModel.getExtraData().setValue(intent.getStringExtra(BluetoothLeService.EXTRA_DATA));
+
+                    break;
             }
         }
     };
@@ -120,73 +129,18 @@ public class  MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-//
-//        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.SEND_SMS) != PackageManager.PERMISSION_GRANTED) {
-//            requestPermissions(new String[]{Manifest.permission.SEND_SMS}, 7);
-//        }
-//        SMSHandler smsHandler = new SMSHandler(this);
-//        smsHandler.sendSMS("test message", "");
 
-        // Set up device log vm
-        deviceLogViewModel = new ViewModelProvider(this).get(DeviceLogViewModel.class);
+        // Set up device list, device log, and bluetooth view models
+        setUpViewModels();
 
-        // Set up database
-        db = Room.databaseBuilder(this, DeviceLog.class, "medicine_log").build();
-        deviceLogViewModel.getDeviceLog().setValue(db);
-        logDao = db.logDao();
-        deviceLogViewModel.getLogDao().setValue(logDao);
-        Observer<ArrayList<DeviceLog.Entry>> selectedEntriesObserver = new Observer<ArrayList<DeviceLog.Entry>>() {
-            @Override
-            public void onChanged(ArrayList<DeviceLog.Entry> list) {
-                entries = list;
-            }
-        };
-        deviceLogViewModel.getSelectedEntries().observe(this, selectedEntriesObserver);
-        deviceLogViewModel.getAllDevices();
+        // Set up device logs, alarm logs, and contacts logs
+        setUpDatabase();
 
-        // Set up device list vm
-        deviceListViewModel = new ViewModelProvider(this).get(DeviceListViewModel.class);
-
-        // Register receiver for paired device state change
-        registerReceiver(new BroadcastReceiver() {
-            @Override
-            public void onReceive(Context context, Intent intent) {
-                retrievePairedDevices();
-            }
-        }, new IntentFilter(BluetoothDevice.ACTION_BOND_STATE_CHANGED));
-
-        // Bluetooth vm setup
-        bluetoothViewModel = new ViewModelProvider(this).get(BluetoothViewModel.class);
-
-        // Request BT permissions
-        requestBtPerms();
-
-        // Create gatt service
-        Intent gattServiceIntent = new Intent(this, BluetoothLeService.class);
-        bindService(gattServiceIntent, serviceConnection, Context.BIND_AUTO_CREATE);
-
-        // Set up observer to connect when the attempt connect flag is true
-        Observer<Boolean> connectFlagObserver = connectFlag -> {
-            if(connectFlag == true && bluetoothService != null) {
-                final boolean result = bluetoothService.connect();
-                Log.e("APPDEBUG", "Connection Request Result = " + result);
-                bluetoothViewModel.getAttemptConnectFlag().setValue(false);
-            }
-        };
-        bluetoothViewModel.getAttemptConnectFlag().observe(this, connectFlagObserver);
-
-        // Get the bluetooth manager
-        BluetoothManager bluetoothManager = getSystemService(BluetoothManager.class);
-
-        // Get the bluetooth adapter and update the vm
-        bluetoothViewModel.getBluetoothAdapter().setValue(bluetoothManager.getAdapter());
-
-        // Get the companion device manager and update the vm
-        CompanionDeviceManager deviceManager = (CompanionDeviceManager) getSystemService(Context.COMPANION_DEVICE_SERVICE);
-        bluetoothViewModel.getDeviceManager().setValue(deviceManager);
+        // Set up bluetooth
+        setUpBluetoothLe();
 
         // Request enable bt if it is not on
-        requestEnableBt(bluetoothViewModel.getBluetoothAdapter().getValue());
+        requestEnableBt(Objects.requireNonNull(bluetoothViewModel.getBluetoothAdapter().getValue()));
 
         // Retrieve paired device list
         retrievePairedDevices();
@@ -194,10 +148,8 @@ public class  MainActivity extends AppCompatActivity {
         // Set up fragment stack
         fragmentStack = new FragmentStack(getSupportFragmentManager(), R.id.container);
 
-        // Set up default fragment (Device List)
-        if (savedInstanceState == null) {
-            fragmentStack.setCurrent(DeviceListFragment.newInstance());
-        }
+        // Set up initial fragment (Device List)
+        if (savedInstanceState == null) fragmentStack.setCurrent(DeviceListFragment.newInstance());
 
         // Set up selection item observer
         deviceListViewModel.getSelectedItem().observe(this, position -> fragmentStack.setCurrent(DeviceDialogFragment.newInstance(position)));
@@ -211,7 +163,7 @@ public class  MainActivity extends AppCompatActivity {
         registerReceiver(gattUpdateReceiver, makeGattUpdateIntentFilter());
         if (bluetoothService != null) {
             final boolean result = bluetoothService.connect();
-            Log.e("APPDEBUG", "Connect request result = " + result);
+            Log.e(DEBUG_TAG, "Connect request result = " + result);
         }
     }
 
@@ -220,7 +172,66 @@ public class  MainActivity extends AppCompatActivity {
         super.onPause();
 
         // Unregister the bluetooth receiver
-        unregisterReceiver(gattUpdateReceiver);
+        // unregisterReceiver(gattUpdateReceiver);
+    }
+
+    private void setUpDatabase() {
+        // Build database
+        db = Room.databaseBuilder(this, LocalDatabase.class, "local_database").build();
+
+        // Get the DAO's
+        databaseViewModel.getDeviceDao().setValue(db.deviceDao());
+        databaseViewModel.getAlarmDao().setValue(db.alarmDao());
+        databaseViewModel.getContactDao().setValue(db.contactDao());
+    }
+
+    private void setUpViewModels() {
+        // Set up device log vm
+        databaseViewModel = new ViewModelProvider(this).get(DatabaseViewModel.class);
+
+        // Set up device list vm
+        deviceListViewModel = new ViewModelProvider(this).get(DeviceListViewModel.class);
+
+        // Bluetooth vm setup
+        bluetoothViewModel = new ViewModelProvider(this).get(BluetoothViewModel.class);
+    }
+
+    private void setUpBluetoothLe() {
+
+        // Request BT permissions
+        requestBtPerms();
+
+        // Get the bluetooth manager
+        BluetoothManager bluetoothManager = getSystemService(BluetoothManager.class);
+
+        // Get the bluetooth adapter and update the vm
+        bluetoothViewModel.getBluetoothAdapter().setValue(bluetoothManager.getAdapter());
+
+        // Get the companion device manager and update the vm
+        CompanionDeviceManager deviceManager = (CompanionDeviceManager) getSystemService(Context.COMPANION_DEVICE_SERVICE);
+        bluetoothViewModel.getDeviceManager().setValue(deviceManager);
+
+        // Register receiver for paired device state change
+        registerReceiver(new BroadcastReceiver() {
+            @Override
+            public void onReceive(Context context, Intent intent) {
+                retrievePairedDevices();
+            }
+        }, new IntentFilter(BluetoothDevice.ACTION_BOND_STATE_CHANGED));
+
+        // Create gatt service
+        Intent gattServiceIntent = new Intent(this, BluetoothLeService.class);
+        bindService(gattServiceIntent, serviceConnection, Context.BIND_AUTO_CREATE);
+
+        // Set up observer to connect when the attempt connect flag is true
+        Observer<Boolean> connectFlagObserver = connectFlag -> {
+            if(connectFlag && bluetoothService != null) {
+                final boolean result = bluetoothService.connect();
+                Log.e(DEBUG_TAG, "Connection Request Result = " + result);
+                bluetoothViewModel.getAttemptConnectFlag().setValue(false);
+            }
+        };
+        bluetoothViewModel.getAttemptConnectFlag().observe(this, connectFlagObserver);
     }
 
     private static IntentFilter makeGattUpdateIntentFilter() {
@@ -251,9 +262,19 @@ public class  MainActivity extends AppCompatActivity {
             Intent enableBtIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
             requestBtPerms();
             try {
-                startActivityForResult(enableBtIntent, REQUEST_ENABLE_BT);
+                registerForActivityResult(new ActivityResultContracts.StartActivityForResult(), result -> {
+                    switch (result.getResultCode()) {
+                        case RESULT_OK:
+                            retrievePairedDevices();
+                            Log.e(DEBUG_TAG, "Bluetooth enable request successful");
+                            break;
+                        case RESULT_CANCELED:
+                            Log.e(DEBUG_TAG, "Bluetooth enable request cancelled");
+                            break;
+                    }
+                }).launch(enableBtIntent);
             } catch (SecurityException e) {
-                Toast.makeText(this, "Could not enable bluetooth", Toast.LENGTH_SHORT).show();
+                Log.e(DEBUG_TAG, "Could not enable bluetooth due to permissions");
             }
         }
     }
@@ -267,9 +288,9 @@ public class  MainActivity extends AppCompatActivity {
         if (gattServices == null) return;
         String uuid = null;
         for(BluetoothGattService gattService : gattServices) {
-            Log.e("SERVICEDEBUG", gattService.getUuid().toString() + " | " + gattService);
+            Log.e(DEBUG_TAG, gattService.getUuid().toString() + " | " + gattService);
             for(BluetoothGattCharacteristic characteristic : gattService.getCharacteristics()) {
-                Log.e("SERVICEDEBUG", "\t" + characteristic.getUuid().toString() + " | " + characteristic);
+                Log.e(DEBUG_TAG, "\t" + characteristic.getUuid().toString() + " | " + characteristic);
                 if(characteristic.getUuid().toString().equals("beb5483e-36e1-4688-b7f5-ea07361b26a8")) {
                     bluetoothService.readCharacteristic(characteristic);
                 }
@@ -286,36 +307,20 @@ public class  MainActivity extends AppCompatActivity {
     @Override
     protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
-        switch (requestCode) {
-            case REQUEST_ENABLE_BT: {
-                if (resultCode == RESULT_OK) {
-                    retrievePairedDevices();
-                }
-                break;
-            }
-            case REQUEST_BT_PERMS: {
-                if (resultCode == RESULT_OK) {
-
-                }
-                break;
-            }
-            case REQUEST_SELECT_DEVICE: {
-                Log.e("APPDEBUG", "REQUEST SELECT DEVICE: " + resultCode);
-                if (resultCode == RESULT_OK) {
-                    ScanResult scanResult = data.getParcelableExtra(CompanionDeviceManager.EXTRA_DEVICE);
-                    if(scanResult != null) {
-                        try {
-                            Log.e("APPDEBUG", "BOND RESULT: " + scanResult.getDevice().createBond());
+        if (requestCode == REQUEST_SELECT_DEVICE) {
+            Log.e(DEBUG_TAG, "REQUEST SELECT DEVICE: " + resultCode);
+            if (resultCode == RESULT_OK) {
+                ScanResult scanResult = data.getParcelableExtra(CompanionDeviceManager.EXTRA_DEVICE);
+                if (scanResult != null) {
+                    try {
+                        Log.e(DEBUG_TAG, "BOND RESULT: " + scanResult.getDevice().createBond());
 
 
-                        } catch (SecurityException e) {
-                            Toast.makeText(this, "Could not pair to device", Toast.LENGTH_LONG).show();
-                        }
+                    } catch (SecurityException e) {
+                        Toast.makeText(this, "Could not pair to device", Toast.LENGTH_LONG).show();
                     }
                 }
-                break;
             }
-
         }
 
 

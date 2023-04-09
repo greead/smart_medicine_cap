@@ -12,23 +12,19 @@ import android.os.Binder;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.Looper;
-import android.os.Message;
 import android.util.Log;
-import android.util.Pair;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
 import java.util.ArrayList;
 
-import kotlin.internal.RequireKotlin;
-
 /**
  * Service for BLE and GATT events and broadcasts
  */
 public class BluetoothLeService extends Service {
     // Constants
-    public final static String ACTION_GATT_CONNECTED = "SENIOR_DESIGN.ACTION_GATT_DISCONNECTED";
+    public final static String ACTION_GATT_CONNECTED = "SENIOR_DESIGN.ACTION_GATT_CONNECTED";
     public final static String ACTION_GATT_DISCONNECTED = "SENIOR_DESIGN.ACTION_GATT_DISCONNECTED";
     public final static String ACTION_GATT_SERVICES_DISCOVERED = "SENIOR_DESIGN.ACTION_GATT_SERVICES_DISCOVERED";
     public final static String ACTION_CHAR_DATA_READ = "SENIOR_DESIGN.ACITON_CHAR_DATA_READ";
@@ -160,6 +156,18 @@ public class BluetoothLeService extends Service {
             return false;
         } catch (SecurityException e) {
             Log.e("APPDEBUF", "Cannot connect due to permissions");
+            return false;
+        }
+    }
+
+    public boolean bond() {
+        if (bluetoothGatt == null) {
+            return false;
+        }
+        try {
+            return bluetoothViewModel.getBluetoothDevice().getValue().createBond();
+        } catch (SecurityException e) {
+            Log.e("APPDEBUG", "Could not create bond");
             return false;
         }
     }

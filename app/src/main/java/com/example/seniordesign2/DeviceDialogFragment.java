@@ -1,9 +1,14 @@
 package com.example.seniordesign2;
 
+import android.app.Dialog;
+import android.app.TimePickerDialog;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothProfile;
 import android.os.Bundle;
 
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import androidx.fragment.app.DialogFragment;
 import androidx.fragment.app.Fragment;
 import androidx.lifecycle.Observer;
 import androidx.lifecycle.ViewModelProvider;
@@ -14,7 +19,11 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.TextView;
+import android.widget.TimePicker;
 import android.widget.Toast;
+
+import java.text.DateFormat;
+import java.util.Calendar;
 
 /**
  * Fragment for displaying device dialog and BLE transactions
@@ -24,9 +33,15 @@ public class DeviceDialogFragment extends Fragment {
     private int position;
     private BluetoothDevice selectedDevice;
     private BluetoothViewModel bluetoothViewModel;
+
+    // UI Components
     private Button btnConnectDevice;
+    private Button btnViewLogs;
+    private Button btnSetContact;
+    private Button btnSetAlarm;
+    private Button btnChangeDeviceName;
     private TextView txtDeviceNameTitle;
-    private Observer<Integer> connectionStatusObserver;
+
     public DeviceDialogFragment() {
         // Required empty public constructor
     }
@@ -50,16 +65,13 @@ public class DeviceDialogFragment extends Fragment {
             Log.e("APPDEBUG", "onCreate");
 
             // Observe change in device connection status from bluetooth vm
-            connectionStatusObserver = new Observer<Integer>() {
-                @Override
-                public void onChanged(Integer state) {
-                    if(state == BluetoothProfile.STATE_CONNECTED) {
-                        btnConnectDevice.setText("Connected");
-                    } else if (state == BluetoothProfile.STATE_DISCONNECTED) {
-                        btnConnectDevice.setText("Disconnected");
-                    } else {
-                        btnConnectDevice.setText("Click to Connect");
-                    }
+            Observer<Integer> connectionStatusObserver = state -> {
+                if(state == BluetoothProfile.STATE_CONNECTED) {
+                    btnConnectDevice.setText("Connected");
+                } else if (state == BluetoothProfile.STATE_DISCONNECTED) {
+                    btnConnectDevice.setText("Disconnected");
+                } else {
+                    btnConnectDevice.setText("Click to Connect");
                 }
             };
             bluetoothViewModel.getConnectionStatus().observe(this, connectionStatusObserver);
@@ -87,8 +99,30 @@ public class DeviceDialogFragment extends Fragment {
             bluetoothViewModel.getAttemptConnectFlag().setValue(true);
         });
 
+        btnViewLogs = view.findViewById(R.id.btnViewLogs);
+        btnViewLogs.setOnClickListener(buttonView -> {
+            // TODO
+        });
+
+        btnSetAlarm = view.findViewById(R.id.btnSetAlarm);
+        btnSetAlarm.setOnClickListener(buttonView -> {
+            // TODO
+        });
+
+        btnSetContact = view.findViewById(R.id.btnSetContact);
+        btnSetContact.setOnClickListener(buttonView -> {
+            // TODO
+        });
+
+        btnChangeDeviceName = view.findViewById(R.id.btnChangeDeviceName);
+        btnChangeDeviceName.setOnClickListener(buttonView -> {
+            // TODO
+        });
+
         return view;
     }
+
+
 
 
 

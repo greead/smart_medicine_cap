@@ -30,7 +30,6 @@ public class BluetoothViewModel extends ViewModel {
     private BluetoothLeDeviceFilter deviceFilter;
     private AssociationRequest pairingRequest;
     private MutableLiveData<CompanionDeviceManager> deviceManager;
-    private MutableLiveData<ArrayList<ScanResult>> scanResultsList;
     private MutableLiveData<Integer> connectionStatus;
     private MutableLiveData<ArrayList<BluetoothGattService>> gattServices;
     private MutableLiveData<String> extraData;
@@ -78,13 +77,6 @@ public class BluetoothViewModel extends ViewModel {
         return deviceManager;
     }
 
-    public MutableLiveData<ArrayList<ScanResult>> getScanResultsList() {
-        if(scanResultsList == null) {
-            scanResultsList = new MutableLiveData<>();
-        }
-        return scanResultsList;
-    }
-
     public MutableLiveData<BluetoothDevice> getBluetoothDevice() {
         if(bluetoothDevice == null) {
             bluetoothDevice = new MutableLiveData<>();
@@ -120,10 +112,6 @@ public class BluetoothViewModel extends ViewModel {
             attemptConnectFlag.setValue(false);
         }
         return attemptConnectFlag;
-    }
-
-    public BluetoothLeDeviceFilter getDeviceFilter() {
-        return deviceFilter;
     }
 
     public AssociationRequest getPairingRequest() {
