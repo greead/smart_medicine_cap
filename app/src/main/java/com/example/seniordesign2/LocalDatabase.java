@@ -27,6 +27,7 @@ public abstract class LocalDatabase extends RoomDatabase {
         public int id;
 
         @ColumnInfo(name = "device_address")
+        @NonNull
         public String deviceAddress;
 
         @ColumnInfo(name = "date")
@@ -37,21 +38,35 @@ public abstract class LocalDatabase extends RoomDatabase {
 
         @ColumnInfo(name = "comment")
         public String comment;
+
+        public DeviceLog(@NonNull String deviceAddress, String date, String time, String comment) {
+            this.deviceAddress = deviceAddress;
+            this.date = date;
+            this.time = time;
+            this.comment = comment;
+        }
+
     }
 
-    @Entity(tableName = "alarm_log")
-    public static class AlarmLog {
+    @Entity(tableName = "contact_log")
+    public static class ContactLog {
         @PrimaryKey
         @ColumnInfo(name = "device_address")
         @NonNull
         public String deviceAddress;
 
         @ColumnInfo(name = "phone_number")
+        @NonNull
         public String phoneNumber;
+
+        public ContactLog(@NonNull String deviceAddress, @NonNull String phoneNumber) {
+            this.deviceAddress = deviceAddress;
+            this.phoneNumber = phoneNumber;
+        }
     }
 
-    @Entity(tableName = "contact_log")
-    public static class ContactLog {
+    @Entity(tableName = "alarm_log")
+    public static class AlarmLog {
         @PrimaryKey
         @ColumnInfo(name = "device_address")
         @NonNull
@@ -62,6 +77,13 @@ public abstract class LocalDatabase extends RoomDatabase {
 
         @ColumnInfo(name = "minute")
         public int minute;
+
+        public AlarmLog(@NonNull String deviceAddress, int hour, int minute) {
+            this.deviceAddress = deviceAddress;
+            this.hour = hour;
+            this.minute = minute;
+        }
+
     }
 
     @Dao

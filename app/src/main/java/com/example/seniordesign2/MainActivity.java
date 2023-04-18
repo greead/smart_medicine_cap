@@ -29,27 +29,30 @@ import android.util.Log;
 import android.widget.Toast;
 
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.Objects;
 
 /**
  * Main activity
  * Controls fragment flow and handles all general operations
  */
-public class  MainActivity extends AppCompatActivity {
+public class  MainActivity extends AppCompatActivity implements DeviceDialogFragment.OnViewLogsListener {
 
     // Log Tags
     private static final String DEBUG_TAG = "APP-DEBUG";
 
     // Activity Flags
-    private static final int REQUEST_ENABLE_BT = 1;
-    private static final int REQUEST_BT_PERMS = 2;
-    private static final int REQUEST_SELECT_DEVICE = 3;
-    private static final int REQUEST_SMS_PERMS = 4;
+    public static final int REQUEST_ENABLE_BT = 1;
+    public static final int REQUEST_BT_PERMS = 2;
+    public static final int REQUEST_SELECT_DEVICE = 3;
+    public static final int REQUEST_SMS_PERMS = 4;
+    public static final int REQUEST_ALARM_PERMS = 5;
+
 
     // Permission Arrays
     private static final String[] BT_PERMS = {"android.permission.BLUETOOTH", "android.permission.BLUETOOTH_ADMIN", "android.permission.BLUETOOTH_CONNECT"};
     private static final String[] SMS_PERMS = {"Manifest.permission.SEND_SMS"};
-    private static final String[] ALARM_PERMS = {"Manifest.permission.SET_EXACT_ALARM"};
+
 
     // Bluetooth Fields
     private BluetoothLeService bluetoothService;
@@ -58,6 +61,7 @@ public class  MainActivity extends AppCompatActivity {
     private BluetoothViewModel bluetoothViewModel;
     private DeviceListViewModel deviceListViewModel;
     private DatabaseViewModel databaseViewModel;
+    private DeviceDialogViewModel deviceDialogViewModel;
 
     // Local Database
     private LocalDatabase db;
@@ -117,9 +121,15 @@ public class  MainActivity extends AppCompatActivity {
                     break;
                 case BluetoothLeService.ACTION_CHAR_DATA_READ:
 
+                    Calendar calendar = Calendar.getInstance();
+                    String extraData = intent.getStringExtra(BluetoothLeService.EXTRA_DATA);
                     Log.e(DEBUG_TAG, intent.getStringExtra(BluetoothLeService.EXTRA_DATA));
-                    bluetoothViewModel.getExtraData().setValue(intent.getStringExtra(BluetoothLeService.EXTRA_DATA));
-
+                    bluetoothViewModel.getExtraData().setValue(extraData);
+                    databaseViewModel.insertDeviceLogs(new LocalDatabase.DeviceLog(
+                            bluetoothViewModel.getBluetoothDevice().getValue().getAddress(),
+                            String.valueOf(calendar.get(Calendar.HOUR_OF_DAY)),
+                            String.valueOf(calendar.get(Calendar.MINUTE)),
+                            extraData));
                     break;
             }
         }
@@ -152,7 +162,7 @@ public class  MainActivity extends AppCompatActivity {
         if (savedInstanceState == null) fragmentStack.setCurrent(DeviceListFragment.newInstance());
 
         // Set up selection item observer
-        deviceListViewModel.getSelectedItem().observe(this, position -> fragmentStack.setCurrent(DeviceDialogFragment.newInstance(position)));
+        deviceListViewModel.getSelectedItem().observe(this, position -> fragmentStack.setCurrent(DeviceDialogFragment.newInstance(position, this)));
     }
 
     @Override
@@ -194,6 +204,10 @@ public class  MainActivity extends AppCompatActivity {
 
         // Bluetooth vm setup
         bluetoothViewModel = new ViewModelProvider(this).get(BluetoothViewModel.class);
+
+        // Set up device dialog vm
+        deviceDialogViewModel = new ViewModelProvider(this).get(DeviceDialogViewModel.class);
+
     }
 
     private void setUpBluetoothLe() {
@@ -232,6 +246,8 @@ public class  MainActivity extends AppCompatActivity {
             }
         };
         bluetoothViewModel.getAttemptConnectFlag().observe(this, connectFlagObserver);
+
+        
     }
 
     private static IntentFilter makeGattUpdateIntentFilter() {
@@ -321,8 +337,17 @@ public class  MainActivity extends AppCompatActivity {
                     }
                 }
             }
+        } else if(requestCode == REQUEST_ALARM_PERMS) {
+            if (resultCode == RESULT_OK) {
+                deviceDialogViewModel.getTimePickerFlag().setValue(true);
+            }
         }
 
 
+    }
+
+    @Override
+    public void onButtonShowLogsPressed(DeviceLogViewModel deviceLogViewModel) {
+        fragmentStack.setCurrent(DeviceLogFragment.newInstance(deviceLogViewModel));
     }
 }

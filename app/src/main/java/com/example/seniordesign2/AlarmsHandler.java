@@ -22,8 +22,8 @@ import java.util.Calendar;
  */
 public class AlarmsHandler {
 
-    Context context;
-    AlarmManager alarmManager;
+    private Context context;
+    static AlarmManager alarmManager;
     public AlarmsHandler(Context context) {
         this.context = context;
         alarmManager = context.getSystemService(AlarmManager.class);
@@ -53,7 +53,7 @@ public class AlarmsHandler {
         int flag = 0;
         PendingIntent pendingIntent = PendingIntent.getBroadcast(context, pendingIntentRequestCode, intent, flag);
 
-        long alarmDelay = minutesAhead * 60_000L;
+        long alarmDelay = (minutesAhead) * 60_000L;
         long alarmTime = System.currentTimeMillis() + alarmDelay;
 
         long intervalDelay = minutesInterval * 60_000L;
@@ -71,11 +71,18 @@ public class AlarmsHandler {
             if (intent.getAction().equals(ACTION_ALARM_NOTIFY)) {
                 String intentExtra = intent.getStringExtra(EXTRA_DATA);
                 Toast.makeText(context, intentExtra, Toast.LENGTH_LONG).show();
+            } else if(intent.getAction().equals(ACTION_ALARM_CHECK)) {
+                new AlarmsHandler(context).setNotifyAlarm(5);
+                Toast.makeText(context, "Alarm will sound in 5 minutes", Toast.LENGTH_LONG).show();
             }
         }
     }
 
-    private class TimePickerFragment extends DialogFragment implements TimePickerDialog.OnTimeSetListener {
+    public TimePickerFragment getTimePickerFragment() {
+        return new TimePickerFragment();
+    }
+
+    public class TimePickerFragment extends DialogFragment implements TimePickerDialog.OnTimeSetListener {
 
         @NonNull
         @Override
@@ -88,8 +95,18 @@ public class AlarmsHandler {
         }
 
         @Override
-        public void onTimeSet(TimePicker timePicker, int i, int i1) {
+        public void onTimeSet(TimePicker timePicker, int hourOfDay, int minute) {
+            final Calendar calendar = Calendar.getInstance();
+            int currentHourOfDay = calendar.get(Calendar.HOUR_OF_DAY);
+            int currentMinute = calendar.get(Calendar.MINUTE);
 
+            int hourOfDayDifference = hourOfDay - currentHourOfDay;
+            int minuteDifference = minute - currentMinute;
+
+            if(hourOfDayDifference < 0) {
+                hourOfDayDifference = 24 + hourOfDayDifference;
+            }
+            setCheckAlarm((hourOfDayDifference * 60 + minuteDifference), (24 * 60));
         }
     }
 

@@ -28,10 +28,14 @@ import java.util.ArrayList;
  */
 public class DeviceListFragment extends Fragment implements DeviceListAdapter.OnNoteListener {
 
+    // View models
     private BluetoothViewModel bluetoothViewModel;
     private DeviceListViewModel deviceListViewModel;
 
+    // View
     private View view;
+
+    // UI Components
     private Button btnScanDevices;
     private RecyclerView lstDeviceList;
     private RecyclerView.LayoutManager layoutManager;
@@ -98,4 +102,6 @@ public class DeviceListFragment extends Fragment implements DeviceListAdapter.On
         deviceListViewModel.getSelectedItem().setValue(position);
         Log.e("APPDEBUG", "GOT POSITION: " + position);
     }
+
+
 }

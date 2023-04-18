@@ -1,14 +1,11 @@
 package com.example.seniordesign2;
 
-import android.app.Dialog;
-import android.app.TimePickerDialog;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothProfile;
+import android.content.pm.PackageManager;
 import android.os.Bundle;
 
-import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
-import androidx.fragment.app.DialogFragment;
+import androidx.core.app.ActivityCompat;
 import androidx.fragment.app.Fragment;
 import androidx.lifecycle.Observer;
 import androidx.lifecycle.ViewModelProvider;
@@ -19,20 +16,23 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.TextView;
-import android.widget.TimePicker;
 import android.widget.Toast;
-
-import java.text.DateFormat;
-import java.util.Calendar;
 
 /**
  * Fragment for displaying device dialog and BLE transactions
  */
 public class DeviceDialogFragment extends Fragment {
+    private static final String[] ALARM_PERMS = {"Manifest.permission.SET_EXACT_ALARM"};
+
     private static final String ARG_POSITION = "POSITION";
     private int position;
     private BluetoothDevice selectedDevice;
     private BluetoothViewModel bluetoothViewModel;
+
+    private DeviceDialogViewModel deviceDialogViewModel;
+    private DeviceLogViewModel deviceLogViewModel;
+    private DatabaseViewModel databaseViewModel;
+    private OnViewLogsListener onViewLogsListener;
 
     // UI Components
     private Button btnConnectDevice;
@@ -41,16 +41,20 @@ public class DeviceDialogFragment extends Fragment {
     private Button btnSetAlarm;
     private Button btnChangeDeviceName;
     private TextView txtDeviceNameTitle;
+    private AlarmsHandler alarmsHandler;
+
+    private SMSHandler smsHandler;
 
     public DeviceDialogFragment() {
         // Required empty public constructor
     }
 
-    public static DeviceDialogFragment newInstance(int position) {
+    public static DeviceDialogFragment newInstance(int position, OnViewLogsListener onViewLogsListener) {
         DeviceDialogFragment fragment = new DeviceDialogFragment();
         Bundle args = new Bundle();
         args.putInt(ARG_POSITION, position);
         fragment.setArguments(args);
+        fragment.setOnViewLogsListener(onViewLogsListener);
         return fragment;
     }
 
@@ -76,6 +80,17 @@ public class DeviceDialogFragment extends Fragment {
             };
             bluetoothViewModel.getConnectionStatus().observe(this, connectionStatusObserver);
 
+            deviceDialogViewModel = new ViewModelProvider(requireActivity()).get(DeviceDialogViewModel.class);
+            deviceDialogViewModel.getTimePickerFlag().observe(this, observedValue -> {
+                if(observedValue) {
+                    showTimePicker();
+                    deviceDialogViewModel.getTimePickerFlag().setValue(false);
+                }
+            });
+
+            deviceLogViewModel = new ViewModelProvider(this).get(DeviceLogViewModel.class);
+
+            alarmsHandler = new AlarmsHandler(getContext());
         }
 
     }
@@ -101,12 +116,14 @@ public class DeviceDialogFragment extends Fragment {
 
         btnViewLogs = view.findViewById(R.id.btnViewLogs);
         btnViewLogs.setOnClickListener(buttonView -> {
-            // TODO
+            onViewLogsListener.onButtonShowLogsPressed(deviceLogViewModel);
         });
 
         btnSetAlarm = view.findViewById(R.id.btnSetAlarm);
         btnSetAlarm.setOnClickListener(buttonView -> {
-            // TODO
+            if(checkAlarmPermissions()) {
+                showTimePicker();
+            }
         });
 
         btnSetContact = view.findViewById(R.id.btnSetContact);
@@ -118,12 +135,30 @@ public class DeviceDialogFragment extends Fragment {
         btnChangeDeviceName.setOnClickListener(buttonView -> {
             // TODO
         });
+        btnChangeDeviceName.setActivated(false);
 
         return view;
     }
 
+    private boolean checkAlarmPermissions() {
+        if (ActivityCompat.checkSelfPermission(getActivity(), "android.permission.SCHEDULE_EXACT_ALARM") != PackageManager.PERMISSION_GRANTED) {
+            getActivity().requestPermissions(ALARM_PERMS, MainActivity.REQUEST_ALARM_PERMS);
+            return false;
+        }
+        return true;
+    }
 
+    private void showTimePicker() {
+        alarmsHandler.getTimePickerFragment().show(getChildFragmentManager(), "Time Picker Dialog");
+    }
 
+    public void setOnViewLogsListener(OnViewLogsListener onViewLogsListener) {
+        this.onViewLogsListener = onViewLogsListener;
+    }
+
+    public interface OnViewLogsListener {
+        void onButtonShowLogsPressed(DeviceLogViewModel deviceLogViewModel);
+    }
 
 
 }
