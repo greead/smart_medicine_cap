@@ -62,6 +62,24 @@ public class DatabaseViewModel extends ViewModel {
         return selectedContactLogs;
     }
 
+    public void getAllAndWait(String deviceAddress) {
+        try {
+            GetDeviceLogsThread getDeviceLogsThread = new GetDeviceLogsThread(deviceAddress);
+            getDeviceLogsThread.start();
+            getDeviceLogsThread.join();
+
+            GetContactLogsThread getContactLogsThread = new GetContactLogsThread(deviceAddress);
+            getContactLogsThread.start();
+            getContactLogsThread.join();
+
+            GetAlarmLogsThread getAlarmLogsThread = new GetAlarmLogsThread(deviceAddress);
+            getAlarmLogsThread.start();
+            getAlarmLogsThread.join();
+        } catch (InterruptedException e) {
+            Log.e("APPDEBUG", "Interrupted Exception occurred");
+        }
+    }
+
     public void getDeviceLogs(String deviceAddress) {
         if (deviceDao == null || deviceDao.getValue() == null) {
             Log.e("APP-DEBUG", "Device DAO not initialized or is null");
@@ -78,7 +96,7 @@ public class DatabaseViewModel extends ViewModel {
 
         @Override
         public void run() {
-            selectedDeviceLogs = new MutableLiveData<>(new ArrayList<>(deviceDao.getValue().loadByAddress(deviceAddress)));
+            selectedDeviceLogs.postValue(new ArrayList<>(deviceDao.getValue().loadByAddress(deviceAddress)));
         }
     }
 
@@ -95,7 +113,7 @@ public class DatabaseViewModel extends ViewModel {
 
         @Override
         public void run() {
-            selectedAlarmLogs = new MutableLiveData<>(new ArrayList<>(alarmDao.getValue().loadByAddress(deviceAddress)));
+            selectedAlarmLogs.postValue(new ArrayList<>(alarmDao.getValue().loadByAddress(deviceAddress)));
         }
     }
 
@@ -112,7 +130,7 @@ public class DatabaseViewModel extends ViewModel {
 
         @Override
         public void run() {
-            selectedContactLogs = new MutableLiveData<>(new ArrayList<>(contactDao.getValue().loadByAddress(deviceAddress)));
+            selectedContactLogs.postValue(new ArrayList<>(contactDao.getValue().loadByAddress(deviceAddress)));
         }
     }
 

@@ -7,7 +7,10 @@ import android.app.TimePickerDialog;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.os.Build;
 import android.os.Bundle;
+import android.os.Vibrator;
+import android.util.Log;
 import android.widget.TimePicker;
 import android.widget.Toast;
 
@@ -23,43 +26,36 @@ import java.util.Calendar;
 public class AlarmsHandler {
 
     private Context context;
+    private DeviceDialogViewModel deviceDialogViewModel;
+    private DatabaseAlarmUpdater databaseAlarmUpdater;
     static AlarmManager alarmManager;
-    public AlarmsHandler(Context context) {
+    public AlarmsHandler(Context context, DeviceDialogViewModel deviceDialogViewModel, DatabaseAlarmUpdater databaseAlarmUpdater) {
         this.context = context;
-        alarmManager = context.getSystemService(AlarmManager.class);
+        alarmManager = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
+        this.deviceDialogViewModel = deviceDialogViewModel;
+        this.databaseAlarmUpdater = databaseAlarmUpdater;
     }
 
-    public void setNotifyAlarm(int minutesAhead) {
-        Intent intent = new Intent(context, AlarmReceiver.class);
-        intent.setAction(AlarmReceiver.ACTION_ALARM_NOTIFY);
-        intent.putExtra(AlarmReceiver.EXTRA_DATA, "Alarm Notify at " + System.currentTimeMillis());
-
-        int pendingIntentRequestCode = 0;
-        int flag = 0;
-        PendingIntent pendingIntent = PendingIntent.getBroadcast(context, pendingIntentRequestCode, intent, flag);
-
-        long alarmDelay = minutesAhead * 60_000L;
-        long alarmTime = System.currentTimeMillis() + alarmDelay;
-
-        alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, alarmTime, pendingIntent);
-    }
-
-    public void setCheckAlarm(int minutesAhead, int minutesInterval) {
+    public void setCheckAlarm(int hour, int minute) {
         Intent intent = new Intent(context, AlarmReceiver.class);
         intent.setAction(AlarmReceiver.ACTION_ALARM_CHECK);
         intent.putExtra(AlarmReceiver.EXTRA_DATA, "Alarm Check at " + System.currentTimeMillis());
 
         int pendingIntentRequestCode = 0;
-        int flag = 0;
+        int flag = PendingIntent.FLAG_IMMUTABLE;
         PendingIntent pendingIntent = PendingIntent.getBroadcast(context, pendingIntentRequestCode, intent, flag);
 
-        long alarmDelay = (minutesAhead) * 60_000L;
-        long alarmTime = System.currentTimeMillis() + alarmDelay;
+        Calendar calendar = Calendar.getInstance();
+        calendar.setTimeInMillis(System.currentTimeMillis());
+        calendar.set(Calendar.HOUR_OF_DAY, hour);
+        calendar.set(Calendar.MINUTE, minute);
 
-        long intervalDelay = minutesInterval * 60_000L;
-        long intervalTime = System.currentTimeMillis() + intervalDelay;
-
-        alarmManager.setRepeating(AlarmManager.RTC_WAKEUP, alarmTime, intervalTime, pendingIntent);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            Log.e("APPDEBUG", "Can schedule: " + alarmManager.canScheduleExactAlarms());
+        }
+        deviceDialogViewModel.getAlarmStatus().setValue(calendar.get(Calendar.HOUR_OF_DAY) + ":" + calendar.get(Calendar.MINUTE));
+        databaseAlarmUpdater.UpdateAlarms(hour, minute);
+        alarmManager.setRepeating(AlarmManager.RTC_WAKEUP, calendar.getTimeInMillis(), AlarmManager.INTERVAL_DAY, pendingIntent);
     }
 
     static class AlarmReceiver extends BroadcastReceiver {
@@ -68,21 +64,35 @@ public class AlarmsHandler {
         public final static String EXTRA_DATA = "EXTRA_DATA";
         @Override
         public void onReceive(Context context, Intent intent) {
+            Vibrator vibrator = (Vibrator) context.getSystemService(Context.VIBRATOR_SERVICE);
+            vibrator.vibrate(4000);
             if (intent.getAction().equals(ACTION_ALARM_NOTIFY)) {
                 String intentExtra = intent.getStringExtra(EXTRA_DATA);
                 Toast.makeText(context, intentExtra, Toast.LENGTH_LONG).show();
             } else if(intent.getAction().equals(ACTION_ALARM_CHECK)) {
-                new AlarmsHandler(context).setNotifyAlarm(5);
-                Toast.makeText(context, "Alarm will sound in 5 minutes", Toast.LENGTH_LONG).show();
+                Log.e("APPDEBUG", "ALARM CHECK");
+                Toast.makeText(context, "Medicine Alarm!", Toast.LENGTH_LONG).show();
             }
         }
     }
 
-    public TimePickerFragment getTimePickerFragment() {
-        return new TimePickerFragment();
+    public TimePickerFragment getTimePickerFragment(DeviceDialogFragment deviceDialogFragment) {
+        return new TimePickerFragment(deviceDialogFragment, this);
     }
 
-    public class TimePickerFragment extends DialogFragment implements TimePickerDialog.OnTimeSetListener {
+    public interface DatabaseAlarmUpdater {
+        void UpdateAlarms(int hour, int minute);
+    }
+
+    public static class TimePickerFragment extends DialogFragment implements TimePickerDialog.OnTimeSetListener {
+
+        DeviceDialogFragment deviceDialogFragment;
+        AlarmsHandler alarmsHandler;
+
+        public TimePickerFragment(DeviceDialogFragment deviceDialogFragment, AlarmsHandler alarmsHandler) {
+            this.deviceDialogFragment = deviceDialogFragment;
+            this.alarmsHandler = alarmsHandler;
+        }
 
         @NonNull
         @Override
@@ -96,17 +106,7 @@ public class AlarmsHandler {
 
         @Override
         public void onTimeSet(TimePicker timePicker, int hourOfDay, int minute) {
-            final Calendar calendar = Calendar.getInstance();
-            int currentHourOfDay = calendar.get(Calendar.HOUR_OF_DAY);
-            int currentMinute = calendar.get(Calendar.MINUTE);
-
-            int hourOfDayDifference = hourOfDay - currentHourOfDay;
-            int minuteDifference = minute - currentMinute;
-
-            if(hourOfDayDifference < 0) {
-                hourOfDayDifference = 24 + hourOfDayDifference;
-            }
-            setCheckAlarm((hourOfDayDifference * 60 + minuteDifference), (24 * 60));
+            alarmsHandler.setCheckAlarm(hourOfDay, minute);
         }
     }
 

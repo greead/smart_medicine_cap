@@ -18,6 +18,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
 import java.util.ArrayList;
+import java.util.Calendar;
 
 /**
  * Service for BLE and GATT events and broadcasts
@@ -31,6 +32,9 @@ public class BluetoothLeService extends Service {
     public final static String EXTRA_DATA = "SENIOR_DESIGN.EXTRA_DATA";
     private final IBinder binder = new LocalBinder();
     private BluetoothViewModel bluetoothViewModel;
+    private DeviceDialogViewModel deviceDialogViewModel;
+
+    private DatabaseViewModel databaseViewModel;
     private BluetoothGatt bluetoothGatt;
 
 
@@ -42,9 +46,9 @@ public class BluetoothLeService extends Service {
         public void onConnectionStateChange(BluetoothGatt gatt, int status, int newState) {
             bluetoothGatt = gatt;
             String deviceAddress = gatt.getDevice().getAddress();
-
             if(status == BluetoothGatt.GATT_SUCCESS) {
                 if(newState == BluetoothProfile.STATE_CONNECTED) {
+                    deviceDialogViewModel.getConnectionStatus().postValue("CONNECTED");
                     Log.e("APPDEBUG", deviceAddress + " Successfully connected");
                     try {
                         broadcastUpdate(ACTION_GATT_CONNECTED);
@@ -55,6 +59,7 @@ public class BluetoothLeService extends Service {
                     }
                     // TODO
                 } else if (newState == BluetoothProfile.STATE_DISCONNECTED) {
+                    deviceDialogViewModel.getConnectionStatus().postValue("NOT CONNECTED");
                     Log.e("APPDEBUG", deviceAddress + " Successfully disconnected");
                     try {
                         broadcastUpdate(ACTION_GATT_DISCONNECTED);
@@ -107,6 +112,12 @@ public class BluetoothLeService extends Service {
                 stringBuilder.append(String.format("%02X", datum));
             }
             intent.putExtra(EXTRA_DATA, new String(data) + "\n" + stringBuilder.toString());
+            Calendar calendar = Calendar.getInstance();
+            calendar.setTimeInMillis(System.currentTimeMillis());
+            databaseViewModel.insertDeviceLogs(new LocalDatabase.DeviceLog(bluetoothGatt.getDevice().getAddress(),
+                    calendar.get(Calendar.MONTH) + "/" + calendar.get(Calendar.DAY_OF_MONTH),
+                    calendar.get(Calendar.HOUR_OF_DAY) + ":" + String.format("%02d", calendar.get(Calendar.MINUTE)),
+                    new String(data)));
             Log.e("APPDEBUG", "Broadcasting Characteristic: " + new String(data) + "\n" + stringBuilder.toString());
         }
         sendBroadcast(intent);
@@ -130,8 +141,10 @@ public class BluetoothLeService extends Service {
         return super.onUnbind(intent);
     }
 
-    public boolean initialize(BluetoothViewModel bluetoothViewModel) {
+    public boolean initialize(BluetoothViewModel bluetoothViewModel, DeviceDialogViewModel deviceDialogViewModel, DatabaseViewModel databaseViewModel) {
         this.bluetoothViewModel = bluetoothViewModel;
+        this.deviceDialogViewModel = deviceDialogViewModel;
+        this.databaseViewModel = databaseViewModel;
         if (bluetoothViewModel == null) {
             Log.e("APPDEBUG", "Unable to obtain BluetoothViewModel");
             return false;

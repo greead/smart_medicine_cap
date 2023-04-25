@@ -13,12 +13,6 @@ import androidx.room.Insert;
  */
 public class SMSHandler {
 
-    //
-//        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.SEND_SMS) != PackageManager.PERMISSION_GRANTED) {
-//            requestPermissions(new String[]{Manifest.permission.SEND_SMS}, 7);
-//        }
-//        SMSHandler smsHandler = new SMSHandler(this);
-//        smsHandler.sendSMS("test message", "");
     Context context;
     SmsManager smsManager;
 

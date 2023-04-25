@@ -81,7 +81,7 @@ public class  MainActivity extends AppCompatActivity implements DeviceDialogFrag
         public void onServiceConnected(ComponentName name, IBinder service) {
             bluetoothService = ((BluetoothLeService.LocalBinder) service).getService();
             if (bluetoothService != null) {
-                if(!bluetoothService.initialize(bluetoothViewModel)) {
+                if(!bluetoothService.initialize(bluetoothViewModel, deviceDialogViewModel, databaseViewModel)) {
                     Log.e(DEBUG_TAG, "Unable to initialize bluetooth");
                     finish();
                 }
@@ -122,14 +122,10 @@ public class  MainActivity extends AppCompatActivity implements DeviceDialogFrag
                 case BluetoothLeService.ACTION_CHAR_DATA_READ:
 
                     Calendar calendar = Calendar.getInstance();
+                    calendar.setTimeInMillis(System.currentTimeMillis());
                     String extraData = intent.getStringExtra(BluetoothLeService.EXTRA_DATA);
                     Log.e(DEBUG_TAG, intent.getStringExtra(BluetoothLeService.EXTRA_DATA));
                     bluetoothViewModel.getExtraData().setValue(extraData);
-                    databaseViewModel.insertDeviceLogs(new LocalDatabase.DeviceLog(
-                            bluetoothViewModel.getBluetoothDevice().getValue().getAddress(),
-                            String.valueOf(calendar.get(Calendar.HOUR_OF_DAY)),
-                            String.valueOf(calendar.get(Calendar.MINUTE)),
-                            extraData));
                     break;
             }
         }
@@ -152,8 +148,7 @@ public class  MainActivity extends AppCompatActivity implements DeviceDialogFrag
         // Request enable bt if it is not on
         requestEnableBt(Objects.requireNonNull(bluetoothViewModel.getBluetoothAdapter().getValue()));
 
-        // Retrieve paired device list
-        retrievePairedDevices();
+
 
         // Set up fragment stack
         fragmentStack = new FragmentStack(getSupportFragmentManager(), R.id.container);
@@ -163,6 +158,10 @@ public class  MainActivity extends AppCompatActivity implements DeviceDialogFrag
 
         // Set up selection item observer
         deviceListViewModel.getSelectedItem().observe(this, position -> fragmentStack.setCurrent(DeviceDialogFragment.newInstance(position, this)));
+
+        // Retrieve paired device list
+        retrievePairedDevices();
+
     }
 
     @Override
@@ -325,18 +324,18 @@ public class  MainActivity extends AppCompatActivity implements DeviceDialogFrag
         super.onActivityResult(requestCode, resultCode, data);
         if (requestCode == REQUEST_SELECT_DEVICE) {
             Log.e(DEBUG_TAG, "REQUEST SELECT DEVICE: " + resultCode);
-            if (resultCode == RESULT_OK) {
-                ScanResult scanResult = data.getParcelableExtra(CompanionDeviceManager.EXTRA_DEVICE);
-                if (scanResult != null) {
-                    try {
-                        Log.e(DEBUG_TAG, "BOND RESULT: " + scanResult.getDevice().createBond());
-
-
-                    } catch (SecurityException e) {
-                        Toast.makeText(this, "Could not pair to device", Toast.LENGTH_LONG).show();
-                    }
-                }
-            }
+//            if (resultCode == RESULT_OK) {
+//                ScanResult scanResult = data.getParcelableExtra(CompanionDeviceManager.EXTRA_DEVICE);
+//                if (scanResult != null) {
+//                    try {
+//                        Log.e(DEBUG_TAG, "BOND RESULT: " + scanResult.getDevice().createBond());
+//
+//
+//                    } catch (SecurityException e) {
+//                        Toast.makeText(this, "Could not pair to device", Toast.LENGTH_LONG).show();
+//                    }
+//                }
+//            }
         } else if(requestCode == REQUEST_ALARM_PERMS) {
             if (resultCode == RESULT_OK) {
                 deviceDialogViewModel.getTimePickerFlag().setValue(true);
@@ -347,7 +346,7 @@ public class  MainActivity extends AppCompatActivity implements DeviceDialogFrag
     }
 
     @Override
-    public void onButtonShowLogsPressed(DeviceLogViewModel deviceLogViewModel) {
+    public void onButtonShowLogsPressed(DeviceLogViewModel deviceLogViewModel) {;
         fragmentStack.setCurrent(DeviceLogFragment.newInstance(deviceLogViewModel));
     }
 }

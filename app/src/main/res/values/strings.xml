@@ -14,4 +14,7 @@
     <string name="set_alarm">Set Alarm</string>
     <string name="no_contact_set">No Contact Set</string>
     <string name="set_contact">Set Contact</string>
+    <string name="connected">Connected</string>
+    <string name="disconnected">Disconnected</string>
+    <string name="click_to_connect">Click to Connect</string>
 </resources>

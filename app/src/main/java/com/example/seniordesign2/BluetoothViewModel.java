@@ -50,7 +50,7 @@ public class BluetoothViewModel extends ViewModel {
     public MutableLiveData<ArrayList<BluetoothDevice>> getPairedDevices() {
         if(pairedDevices == null) {
             pairedDevices = new MutableLiveData<>();
-            pairedDevices.setValue(new ArrayList<>());
+            pairedDevices.postValue(new ArrayList<>());
         }
         return pairedDevices;
     }
@@ -58,7 +58,7 @@ public class BluetoothViewModel extends ViewModel {
     public MutableLiveData<ArrayMap<String, BluetoothGatt>> getConnectedDevices() {
         if(connectedDevices == null) {
             connectedDevices = new MutableLiveData<>();
-            connectedDevices.setValue(new ArrayMap<>());
+            connectedDevices.postValue(new ArrayMap<>());
         }
         return connectedDevices;
     }
@@ -94,7 +94,7 @@ public class BluetoothViewModel extends ViewModel {
     public MutableLiveData<ArrayList<BluetoothGattService>> getGattServices() {
         if(gattServices == null) {
             gattServices = new MutableLiveData<>();
-            gattServices.setValue(new ArrayList<>());
+            gattServices.postValue(new ArrayList<>());
         }
         return gattServices;
     }
@@ -109,7 +109,7 @@ public class BluetoothViewModel extends ViewModel {
     public MutableLiveData<Boolean> getAttemptConnectFlag() {
         if(attemptConnectFlag == null) {
             attemptConnectFlag = new MutableLiveData<>();
-            attemptConnectFlag.setValue(false);
+            attemptConnectFlag.postValue(false);
         }
         return attemptConnectFlag;
     }
