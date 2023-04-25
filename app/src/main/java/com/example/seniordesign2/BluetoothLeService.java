@@ -9,29 +9,33 @@ import android.bluetooth.BluetoothGattService;
 import android.bluetooth.BluetoothProfile;
 import android.content.Intent;
 import android.os.Binder;
+import android.os.Handler;
 import android.os.IBinder;
+import android.os.Looper;
 import android.util.Log;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
 import java.util.ArrayList;
+import java.util.Calendar;
 
 /**
  * Service for BLE and GATT events and broadcasts
  */
 public class BluetoothLeService extends Service {
     // Constants
-    public final static String ACTION_GATT_CONNECTED = "SENIOR_DESIGN.ACTION_GATT_DISCONNECTED";
+    public final static String ACTION_GATT_CONNECTED = "SENIOR_DESIGN.ACTION_GATT_CONNECTED";
     public final static String ACTION_GATT_DISCONNECTED = "SENIOR_DESIGN.ACTION_GATT_DISCONNECTED";
     public final static String ACTION_GATT_SERVICES_DISCOVERED = "SENIOR_DESIGN.ACTION_GATT_SERVICES_DISCOVERED";
     public final static String ACTION_CHAR_DATA_READ = "SENIOR_DESIGN.ACITON_CHAR_DATA_READ";
     public final static String EXTRA_DATA = "SENIOR_DESIGN.EXTRA_DATA";
-    private IBinder binder = new LocalBinder();
+    private final IBinder binder = new LocalBinder();
     private BluetoothViewModel bluetoothViewModel;
+    private DeviceDialogViewModel deviceDialogViewModel;
+
+    private DatabaseViewModel databaseViewModel;
     private BluetoothGatt bluetoothGatt;
-    private int connectionState;
-    private int connectionAttempts = 0;
 
 
     /**
@@ -40,38 +44,37 @@ public class BluetoothLeService extends Service {
     private final BluetoothGattCallback bluetoothGattCallback = new BluetoothGattCallback() {
         @Override
         public void onConnectionStateChange(BluetoothGatt gatt, int status, int newState) {
-            Log.e("APPDEBUG", "Connection State: " + newState );
-            Log.e("APPDEBUG", "Connection Status: " + status);
-            if(status != BluetoothGatt.GATT_SUCCESS) {
+            bluetoothGatt = gatt;
+            String deviceAddress = gatt.getDevice().getAddress();
+            if(status == BluetoothGatt.GATT_SUCCESS) {
+                if(newState == BluetoothProfile.STATE_CONNECTED) {
+                    deviceDialogViewModel.getConnectionStatus().postValue("CONNECTED");
+                    Log.e("APPDEBUG", deviceAddress + " Successfully connected");
+                    try {
+                        broadcastUpdate(ACTION_GATT_CONNECTED);
+                        bluetoothViewModel.getConnectedDevices().getValue().put(deviceAddress, gatt);
+                        new Handler(Looper.getMainLooper()).post(gatt::discoverServices);
+                    } catch (SecurityException e) {
+                        Log.e("APPDEBUG", "Could not perform service discovery due to permissions");
+                    }
+                    // TODO
+                } else if (newState == BluetoothProfile.STATE_DISCONNECTED) {
+                    deviceDialogViewModel.getConnectionStatus().postValue("NOT CONNECTED");
+                    Log.e("APPDEBUG", deviceAddress + " Successfully disconnected");
+                    try {
+                        broadcastUpdate(ACTION_GATT_DISCONNECTED);
+                        gatt.close();
+                    } catch (SecurityException e) {
+                        Log.e("APPDEBUG", "GATT failed to close due to permissions");
+                    }
+                }
+            } else {
+                Log.e("APPDEBUG", "Device: " + deviceAddress + ", Error: " + status);
                 try {
-                    bluetoothGatt.close();
+                    gatt.close();
                 } catch (SecurityException e) {
-                    Log.e("APPDEBUG", "Could not close GATT due to permissions");
+                    Log.e("APPDEBUG", "GATT failed to close due to permissions");
                 }
-                bluetoothGatt = null;
-                if (connectionAttempts < 5) {
-                    connectionAttempts ++;
-                    connect();
-                    return;
-                } else {
-                    connectionAttempts = 0;
-                    return;
-                }
-            }
-            if(newState == BluetoothProfile.STATE_CONNECTED){
-                Log.e("APPDEBUG", "Connected");
-                connectionState = BluetoothProfile.STATE_CONNECTED;
-                broadcastUpdate(ACTION_GATT_CONNECTED);
-                try {
-                    bluetoothGatt.discoverServices();
-                } catch (SecurityException e) {
-                    Log.e("APPDEBUG", "Could not perform service discovery due to permissions");
-                }
-
-            } else if (newState == BluetoothProfile.STATE_DISCONNECTED) {
-                Log.e("APPDEBUG", "Disconnected");
-                broadcastUpdate(ACTION_GATT_DISCONNECTED);
-                connectionState = BluetoothProfile.STATE_DISCONNECTED;
             }
         }
 
@@ -91,6 +94,7 @@ public class BluetoothLeService extends Service {
             if(status == BluetoothGatt.GATT_SUCCESS) {
                 Log.e("APPDEBUG", "onCharacteristicRead received" + characteristic.toString() + " | " + value.toString() + " | " + String.valueOf(value));
                 broadcastUpdate(ACTION_CHAR_DATA_READ, characteristic);
+
             }
         }
     };
@@ -108,6 +112,12 @@ public class BluetoothLeService extends Service {
                 stringBuilder.append(String.format("%02X", datum));
             }
             intent.putExtra(EXTRA_DATA, new String(data) + "\n" + stringBuilder.toString());
+            Calendar calendar = Calendar.getInstance();
+            calendar.setTimeInMillis(System.currentTimeMillis());
+            databaseViewModel.insertDeviceLogs(new LocalDatabase.DeviceLog(bluetoothGatt.getDevice().getAddress(),
+                    calendar.get(Calendar.MONTH) + "/" + calendar.get(Calendar.DAY_OF_MONTH),
+                    calendar.get(Calendar.HOUR_OF_DAY) + ":" + String.format("%02d", calendar.get(Calendar.MINUTE)),
+                    new String(data)));
             Log.e("APPDEBUG", "Broadcasting Characteristic: " + new String(data) + "\n" + stringBuilder.toString());
         }
         sendBroadcast(intent);
@@ -131,8 +141,10 @@ public class BluetoothLeService extends Service {
         return super.onUnbind(intent);
     }
 
-    public boolean initialize(BluetoothViewModel bluetoothViewModel) {
+    public boolean initialize(BluetoothViewModel bluetoothViewModel, DeviceDialogViewModel deviceDialogViewModel, DatabaseViewModel databaseViewModel) {
         this.bluetoothViewModel = bluetoothViewModel;
+        this.deviceDialogViewModel = deviceDialogViewModel;
+        this.databaseViewModel = databaseViewModel;
         if (bluetoothViewModel == null) {
             Log.e("APPDEBUG", "Unable to obtain BluetoothViewModel");
             return false;
@@ -148,7 +160,7 @@ public class BluetoothLeService extends Service {
         try {
             final BluetoothDevice device = bluetoothViewModel.getBluetoothDevice().getValue();
             // Connect to GATT server
-            Log.e("APPDEBUG", "Device attempting to connect");
+            Log.e("APPDEBUG", "Device attempting to connect: " + System.currentTimeMillis() + "ms");
             bluetoothGatt = device.connectGatt(this, false, bluetoothGattCallback, BluetoothDevice.TRANSPORT_LE);
 
             return true;
@@ -157,6 +169,18 @@ public class BluetoothLeService extends Service {
             return false;
         } catch (SecurityException e) {
             Log.e("APPDEBUF", "Cannot connect due to permissions");
+            return false;
+        }
+    }
+
+    public boolean bond() {
+        if (bluetoothGatt == null) {
+            return false;
+        }
+        try {
+            return bluetoothViewModel.getBluetoothDevice().getValue().createBond();
+        } catch (SecurityException e) {
+            Log.e("APPDEBUG", "Could not create bond");
             return false;
         }
     }

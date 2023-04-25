@@ -1,9 +1,17 @@
 package com.example.seniordesign2;
 
+import static android.app.Activity.RESULT_OK;
+
+import androidx.activity.result.ActivityResult;
+import androidx.activity.result.ActivityResultCallback;
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.IntentSenderRequest;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.lifecycle.Observer;
 import androidx.lifecycle.ViewModelProvider;
 
 import android.bluetooth.BluetoothDevice;
+import android.bluetooth.le.ScanResult;
 import android.companion.CompanionDeviceManager;
 import android.content.IntentSender;
 import android.os.Bundle;
@@ -28,14 +36,20 @@ import java.util.ArrayList;
  */
 public class DeviceListFragment extends Fragment implements DeviceListAdapter.OnNoteListener {
 
+    // View models
     private BluetoothViewModel bluetoothViewModel;
     private DeviceListViewModel deviceListViewModel;
 
+    // View
     private View view;
+
+    // UI Components
     private Button btnScanDevices;
     private RecyclerView lstDeviceList;
     private RecyclerView.LayoutManager layoutManager;
     private DeviceListAdapter deviceListAdapter;
+
+    private ActivityResultLauncher<IntentSenderRequest> activityResultLauncher;
 
     public DeviceListFragment() {
         // EMPTY CONSTRUCTOR
@@ -43,6 +57,24 @@ public class DeviceListFragment extends Fragment implements DeviceListAdapter.On
 
     public static DeviceListFragment newInstance() {
         return new DeviceListFragment();
+    }
+
+    @Override
+    public void onCreate(@Nullable Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        activityResultLauncher = registerForActivityResult(new ActivityResultContracts.StartIntentSenderForResult(), result -> {
+            if (result.getResultCode() == RESULT_OK) {
+                ScanResult scanResult = result.getData().getParcelableExtra(CompanionDeviceManager.EXTRA_DEVICE);
+                if (scanResult != null) {
+                    try {
+                        Log.e("APPDEBUG", "BOND RESULT: " + scanResult.getDevice().createBond());
+
+                    } catch (SecurityException e) {
+                        Toast.makeText(requireActivity(), "Could not pair to device", Toast.LENGTH_LONG).show();
+                    }
+                }
+            }
+        });
     }
 
     @Nullable
@@ -58,10 +90,17 @@ public class DeviceListFragment extends Fragment implements DeviceListAdapter.On
         btnScanDevices.setOnClickListener(view -> {
             bluetoothViewModel.getDeviceManager().getValue().associate(bluetoothViewModel.getPairingRequest(), new CompanionDeviceManager.Callback() {
                 public void onDeviceFound(@NonNull IntentSender chooserLauncher) {
+                    Log.e("APPDEBUG", "DEVICE FOUND");
                     try {
-                        getActivity().startIntentSenderForResult(chooserLauncher, bluetoothViewModel.REQUEST_SELECT_DEVICE, null, 0, 0, 0);
-                    } catch (IntentSender.SendIntentException e) {
+                        activityResultLauncher.launch(
+                                new IntentSenderRequest.Builder(chooserLauncher)
+                                        .setFillInIntent(null)
+                                        .build()
+                        );
+//                        requireActivity().startIntentSenderForResult(chooserLauncher, bluetoothViewModel.REQUEST_SELECT_DEVICE, null, 0, 0, 0);
+                    } catch (Exception e) {
                         Toast.makeText(getActivity(), "Failed to send intent", Toast.LENGTH_LONG).show();
+                        Log.e("APPDEBUG", "Exception: " + e.getMessage());
                     }
                 }
                 @Override
@@ -97,4 +136,6 @@ public class DeviceListFragment extends Fragment implements DeviceListAdapter.On
         deviceListViewModel.getSelectedItem().setValue(position);
         Log.e("APPDEBUG", "GOT POSITION: " + position);
     }
+
+
 }
