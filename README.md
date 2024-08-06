@@ -1,6 +1,8 @@
 ## Smart Medicine Cap Notification Application
 Purdue University, Fort Wayne
+
 Senior design project; Computer Engineering Technology 
+
 Credit: Alekzander Green, Mike Hurtle, Dr. Hongli Luo
 
 ### Senior design project
